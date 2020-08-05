@@ -2,7 +2,6 @@ package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
 
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;

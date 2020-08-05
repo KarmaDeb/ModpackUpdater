@@ -1,13 +1,14 @@
 package ml.karmaconfigs.ModPackUpdater;
 
-import com.formdev.flatlaf.*;
-import ml.karmaconfigs.ModPackUpdater.Utils.*;
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Downloader;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Installer;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.ListMods;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
+import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
 import ml.karmaconfigs.ModPackUpdater.VersionChecker.Checker;
 
 import javax.imageio.ImageIO;
@@ -16,7 +17,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
-import java.io.*;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -24,6 +25,8 @@ import java.util.TimerTask;
 public class MainFrame {
 
     public static String version = MainFrame.class.getPackage().getImplementationVersion();
+
+    public static JComboBox<String> modpacks = new JComboBox<>(Modpack.listing.modpacks());
 
     public static JFrame frame;
 
@@ -67,8 +70,6 @@ public class MainFrame {
         bar.add(barLabel);
         bar.setValue(0);
 
-        //Combo boxes
-        JComboBox<String> modpacks = new JComboBox<>(Modpack.listing.modpacks());
         /*
         Nobody should use "System default" since it looks pretty bad and honestly, it works really slow :)
         Should I remove it in a future version?
@@ -390,13 +391,6 @@ public class MainFrame {
                 }
             }
         });
-
-        try {
-            Checker checker = new Checker(version);
-            checker.showVersion();
-        } catch (Throwable e) {
-            utils.log(e);
-        }
     }
 
     private void disable(JSplitPane... panes) {
@@ -438,7 +432,8 @@ public class MainFrame {
         } catch (Throwable e) {
             e.printStackTrace();
         }
-        SwingUtilities.invokeLater(() -> new MainFrame().initFrame());
+
+        new Checker(version).showVersion();
 
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {

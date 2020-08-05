@@ -1,11 +1,14 @@
 package ml.karmaconfigs.ModPackUpdater.VersionChecker;
 
+import lombok.SneakyThrows;
 import ml.karmaconfigs.ModPackUpdater.MainFrame;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -26,8 +29,9 @@ public final class Checker {
      *
      * @param realVersion the running version
      */
-    public Checker(String realVersion) throws Throwable {
-        if (realVersion == null || realVersion.isEmpty()) realVersion = "1.0.0";
+    @SneakyThrows
+    public Checker(String realVersion) {
+        if (realVersion == null || realVersion.isEmpty()) realVersion = MainFrame.version;
         version_now_str = realVersion;
         version_now_int = Integer.parseInt(version_now_str.replaceAll("[^a-zA-Z0-9]", "").replaceAll("[aA-zZ]", ""));
 
@@ -63,7 +67,7 @@ public final class Checker {
      */
     public final void showVersion() {
         JFrame update = new JFrame();
-        update.setPreferredSize(new Dimension(500, 90));
+        update.setPreferredSize(new Dimension(750, 100));
 
         try {
             update.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
@@ -84,8 +88,12 @@ public final class Checker {
         JPanel downloadPanel = new JPanel();
         if (isOutdated()) {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                JButton openButton = new JButton("Download latest version");
-                downloadPanel.add(openButton);
+                JButton openButton = new JButton("Download latest version and open launcher");
+                JButton ignoreButton = new JButton("No thanks I'm fine, let me in");
+
+                JSplitPane buttonSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, openButton, ignoreButton);
+
+                downloadPanel.add(buttonSplitter);
 
                 openButton.addActionListener(e -> {
                     try {
@@ -93,6 +101,11 @@ public final class Checker {
                     } catch (Throwable ex) {
                         new Utils().log(ex);
                     }
+                    update.dispatchEvent(new WindowEvent(update, WindowEvent.WINDOW_CLOSING));
+                });
+
+                ignoreButton.addActionListener(e -> {
+                    update.dispatchEvent(new WindowEvent(update, WindowEvent.WINDOW_CLOSING));
                 });
             } else {
                 JTextArea url = new JTextArea();
@@ -103,7 +116,7 @@ public final class Checker {
             }
         } else {
             JLabel updatedInfo = new JLabel();
-            updatedInfo.setText("You can close this window");
+            updatedInfo.setText("Close this windows to open the updater");
             downloadPanel.add(updatedInfo);
         }
 
@@ -118,5 +131,41 @@ public final class Checker {
         update.setResizable(false);
         update.add(splitter);
         update.setVisible(true);
+
+        update.addWindowListener(new WindowListener() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                new MainFrame().initFrame();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowActivated(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+            }
+        });
     }
 }

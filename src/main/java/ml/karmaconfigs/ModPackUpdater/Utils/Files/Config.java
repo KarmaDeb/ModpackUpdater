@@ -1,7 +1,5 @@
 package ml.karmaconfigs.ModPackUpdater.Utils.Files;
 
-import ml.karmaconfigs.ModPackUpdater.MainFrame;
-
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

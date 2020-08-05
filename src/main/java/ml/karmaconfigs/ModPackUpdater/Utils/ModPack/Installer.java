@@ -4,12 +4,15 @@ import lombok.SneakyThrows;
 import ml.karmaconfigs.ModPackUpdater.MainFrame;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.SelectiveSelection;
+import ml.karmaconfigs.ModPackUpdater.Utils.Files.Unzip;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
-import net.lingala.zip4j.core.ZipFile;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 public final class Installer {
 
@@ -55,21 +58,31 @@ public final class Installer {
                             File zFile = new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip");
 
                             if (zFile.exists()) {
-                                ZipFile zipFile = new ZipFile(zFile);
-                                net.lingala.zip4j.progress.ProgressMonitor progressMonitor = zipFile.getProgressMonitor();
+                                Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip"),
+                                        FilesUtilities.getModpackDownloadDir(pack),
+                                        false);
 
-                                zipFile.extractAll(FilesUtilities.getModpackDownloadDir(pack).getPath());
-                                utils.setProgress("Unzipping modpack.zip", progressMonitor.getPercentDone());
+                                Thread thread = new Thread(unzip, "Unzipping");
+                                thread.start();
 
-                                moveContentsToMinecraft("mods");
-                                if (pack.hasShaders()) {
-                                    renameShaders();
-                                    moveContentsToMinecraft("shaderpacks");
-                                }
-                                if (pack.hasTextures()) {
-                                    renameTextures();
-                                    moveContentsToMinecraft("resourcepacks");
-                                }
+                                Timer installTimer = new Timer();
+                                installTimer.schedule(new TimerTask() {
+                                    @Override
+                                    public void run() {
+                                        if (unzip.isEnded()) {
+                                            installTimer.cancel();
+                                            moveContentsToMinecraft("mods");
+                                            if (pack.hasShaders()) {
+                                                renameShaders();
+                                                moveContentsToMinecraft("shaderpacks");
+                                            }
+                                            if (pack.hasTextures()) {
+                                                renameTextures();
+                                                moveContentsToMinecraft("resourcepacks");
+                                            }
+                                        }
+                                    }
+                                }, 0, TimeUnit.SECONDS.toMillis(1));
                                 return "SUCCESS";
                             } else {
                                 return "DOWNLOAD_NEED";
@@ -147,21 +160,31 @@ public final class Installer {
                             File zFile = new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip");
 
                             if (zFile.exists()) {
-                                ZipFile zipFile = new ZipFile(zFile);
-                                net.lingala.zip4j.progress.ProgressMonitor progressMonitor = zipFile.getProgressMonitor();
+                                Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip")
+                                        , FilesUtilities.getModpackDownloadDir(pack),
+                                        false);
 
-                                zipFile.extractAll(FilesUtilities.getModpackDownloadDir(pack).getPath());
-                                utils.setProgress("Unzipping modpack.zip", progressMonitor.getPercentDone());
+                                Thread thread = new Thread(unzip, "Unzipping");
+                                thread.start();
 
-                                moveContentsToMinecraft("mods", notIn);
-                                if (pack.hasShaders()) {
-                                    renameShaders(alreadyShaders);
-                                    moveContentsToMinecraft("shaderpacks", notShaders);
-                                }
-                                if (pack.hasTextures()) {
-                                    renameTextures(alreadyResources);
-                                    moveContentsToMinecraft("resourcepacks", notResources);
-                                }
+                                Timer installTimer = new Timer();
+                                installTimer.schedule(new TimerTask() {
+                                    @Override
+                                    public void run() {
+                                        if (unzip.isEnded()) {
+                                            installTimer.cancel();
+                                            moveContentsToMinecraft("mods", notIn);
+                                            if (pack.hasShaders()) {
+                                                renameShaders(alreadyShaders);
+                                                moveContentsToMinecraft("shaderpacks", notShaders);
+                                            }
+                                            if (pack.hasTextures()) {
+                                                renameTextures(alreadyResources);
+                                                moveContentsToMinecraft("resourcepacks", notResources);
+                                            }
+                                        }
+                                    }
+                                }, 0, TimeUnit.SECONDS.toMillis(1));
                                 return "SUCCESS";
                             } else {
                                 return "DOWNLOAD_NEED";

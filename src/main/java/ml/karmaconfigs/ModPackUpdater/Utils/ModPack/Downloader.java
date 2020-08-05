@@ -3,8 +3,8 @@ package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
 import lombok.SneakyThrows;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
+import ml.karmaconfigs.ModPackUpdater.Utils.Files.Unzip;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
-import net.lingala.zip4j.core.ZipFile;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.*;
@@ -13,10 +13,11 @@ import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public final class Downloader implements Runnable {
 
-    private final Utils utils = new Utils();
+    private static final Utils utils = new Utils();
 
     private static String url;
     private final static ArrayList<String> mods = new ArrayList<>();
@@ -180,22 +181,32 @@ public final class Downloader implements Runnable {
                 utils.setDebug(utils.rgbColor("Downloaded modpack.zip", 120, 200, 155), false);
 
                 try {
-                    ZipFile zipFile = new ZipFile(new File(FilesUtilities.getModpackDownloadDir(modpack), "modpack.zip"));
-                    net.lingala.zip4j.progress.ProgressMonitor progressMonitor = zipFile.getProgressMonitor();
+                    Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(modpack), "modpack.zip"),
+                            FilesUtilities.getModpackDownloadDir(modpack), false);
 
-                    zipFile.extractAll(FilesUtilities.getPath(FilesUtilities.getModpackDownloadDir(modpack)));
-                    utils.setProgress("Unzipping modpack.zip", progressMonitor.getPercentDone());
+                    Thread thread = new Thread(unzip, "Unzipping");
+                    thread.start();
+
+                    Timer installTimer = new Timer();
+                    boolean finalHasShaderpacks = hasShaderpacks;
+                    boolean finalHasTexturepacks = hasTexturepacks;
+                    installTimer.schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (unzip.isEnded()) {
+                                installTimer.cancel();
+                                moveContentsToMinecraft("mods");
+                                if (finalHasShaderpacks) {
+                                    moveContentsToMinecraft("shaderpacks");
+                                }
+                                if (finalHasTexturepacks) {
+                                    moveContentsToMinecraft("resourcepacks");
+                                }
+                            }
+                        }
+                    }, 0, TimeUnit.SECONDS.toMillis(1));
                 } catch (Throwable e) {
                     utils.log(e);
-                } finally {
-                    utils.setProgress("Download status bar", 1);
-                    moveContentsToMinecraft("mods");
-                    if (hasTexturepacks) {
-                        moveContentsToMinecraft("resourcepacks");
-                    }
-                    if (hasShaderpacks) {
-                        moveContentsToMinecraft("shaderpacks");
-                    }
                 }
             }
         }
@@ -237,6 +248,8 @@ public final class Downloader implements Runnable {
                 utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
             }
             utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " files <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+        } else {
+            utils.setDebug(utils.rgbColor("Something was wrong with directory: " + FilesUtilities.getModpackDownloadDir(modpack) + "/" + folder, 220, 100, 100), false);
         }
     }
 
