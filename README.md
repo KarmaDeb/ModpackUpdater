@@ -1,5 +1,6 @@
 # ModpackUpdater
 A tool to update and install modpacks from a simple url, this tool allows you to include shaders and texture packs
+[Official McMarket url](https://www.mc-market.org/resources/16787/)
 
 ## Themes
 The tool has 3 themes
