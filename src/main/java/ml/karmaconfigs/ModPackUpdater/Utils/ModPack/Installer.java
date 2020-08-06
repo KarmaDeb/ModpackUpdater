@@ -1,11 +1,11 @@
 package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.MainFrame;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.SelectiveSelection;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Unzip;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,168 +40,180 @@ public final class Installer {
     @SneakyThrows
     public String install() {
         ArrayList<File> currentMods = getMods();
-        ArrayList<File> packMods = pack.getMods();
+        ArrayList<File> currentInMods = getInMods();
 
-        if (!packMods.isEmpty()) {
-            int success = 0;
-            for (File mod : packMods) {
-                if (currentMods.contains(mod)) {
-                    success++;
-                }
-            }
+        if (fullInstall) {
+            moveMods();
+            try {
+                if (pack.isZip()) {
+                    File zFile = new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip");
 
-            if (success != packMods.size()) {
-                if (fullInstall) {
-                    moveMods();
-                    try {
-                        if (pack.isZip()) {
-                            File zFile = new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip");
+                    if (zFile.exists()) {
+                        Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip"),
+                                FilesUtilities.getModpackDownloadDir(pack), false);
 
-                            if (zFile.exists()) {
-                                Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip"),
-                                        FilesUtilities.getModpackDownloadDir(pack),
-                                        false);
+                        Thread thread = new Thread(unzip, "Unzipping");
+                        thread.start();
 
-                                Thread thread = new Thread(unzip, "Unzipping");
-                                thread.start();
-
-                                Timer installTimer = new Timer();
-                                installTimer.schedule(new TimerTask() {
-                                    @Override
-                                    public void run() {
-                                        if (unzip.isEnded()) {
-                                            installTimer.cancel();
-                                            moveContentsToMinecraft("mods");
-                                            if (pack.hasShaders()) {
-                                                renameShaders();
-                                                moveContentsToMinecraft("shaderpacks");
-                                            }
-                                            if (pack.hasTextures()) {
-                                                renameTextures();
-                                                moveContentsToMinecraft("resourcepacks");
-                                            }
-                                        }
+                        Timer installTimer = new Timer();
+                        installTimer.schedule(new TimerTask() {
+                            @SneakyThrows
+                            @Override
+                            public void run() {
+                                if (unzip.isEnded()) {
+                                    installTimer.cancel();
+                                    moveContentsToMinecraft("mods");
+                                    if (pack.hasShaders()) {
+                                        renameShaders();
+                                        moveContentsToMinecraft("shaderpacks");
                                     }
-                                }, 0, TimeUnit.SECONDS.toMillis(1));
-                                return "SUCCESS";
-                            } else {
-                                return "DOWNLOAD_NEED";
+                                    if (pack.hasTextures()) {
+                                        renameTextures();
+                                        moveContentsToMinecraft("resourcepacks");
+                                    }
+                                    if (pack.hasVersion()) {
+                                        pack.installVersion();
+                                    }
+                                }
                             }
-                        } else {
-                            moveContentsToMinecraft("mods");
-                            return "SUCCESS";
-                        }
-                    } finally {
-                        utils.setProgress("Download status bar", 1);
+                        }, 0, TimeUnit.SECONDS.toMillis(1));
+                        return "SUCCESS";
+                    } else {
+                        return "DOWNLOAD_NEED";
                     }
                 } else {
-                    SelectiveSelection already = new SelectiveSelection();
-                    SelectiveSelection notIn = new SelectiveSelection();
-
-                    SelectiveSelection alreadyShaders = new SelectiveSelection();
-                    SelectiveSelection notShaders = new SelectiveSelection();
-
-                    SelectiveSelection alreadyResources = new SelectiveSelection();
-                    SelectiveSelection notResources = new SelectiveSelection();
-                    
-                    for (File mod : packMods) {
-                        if (currentMods.contains(mod)) {
-                            already.addSelectedFile(mod);
-                        } else {
-                            notIn.addSelectedFile(mod);
-                        }
-                    }
-                    
-                    File[] packShaders = FilesUtilities.getModpackShaders(pack).listFiles();
-                    if (packShaders != null && !Arrays.asList(packShaders).isEmpty()) {
-                        ArrayList<File> mcShaders = new ArrayList<>();
-                        File[] mcShadersZips = new File(FilesUtilities.getMinecraftDir() + "/shaderpacks").listFiles();
-                        if (mcShadersZips != null && !Arrays.asList(mcShadersZips).isEmpty()) {
-                            for (File shader : mcShadersZips) {
-                                if (Downloader.isZip(shader)) {
-                                    mcShaders.add(shader);
-                                }
-                            }
-                        }
-
-                        for (File shader : packShaders) {
-                            if (mcShaders.contains(shader)) {
-                                alreadyShaders.addSelectedFile(shader);
-                            } else {
-                                notShaders.addSelectedFile(shader);
-                            }
-                        }
+                    if (pack.hasVersion()) {
+                        pack.installVersion();
                     }
 
-                    File[] packResources = FilesUtilities.getModpackTextures(pack).listFiles();
-                    if (packResources != null && !Arrays.asList(packResources).isEmpty()) {
-                        ArrayList<File> mcResources = new ArrayList<>();
-                        File[] mcResourcesZips = new File(FilesUtilities.getMinecraftDir() + "/resourcepacks").listFiles();
-                        if (mcResourcesZips != null && !Arrays.asList(mcResourcesZips).isEmpty()) {
-                            for (File shader : mcResourcesZips) {
-                                if (Downloader.isZip(shader)) {
-                                    mcResources.add(shader);
-                                }
-                            }
-                        }
-
-                        for (File shader : packResources) {
-                            if (mcResources.contains(shader)) {
-                                alreadyResources.addSelectedFile(shader);
-                            } else {
-                                notResources.addSelectedFile(shader);
-                            }
-                        }
-                    }
-                    
-                    moveMods(already);
-                    try {
-                        if (pack.isZip()) {
-                            File zFile = new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip");
-
-                            if (zFile.exists()) {
-                                Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip")
-                                        , FilesUtilities.getModpackDownloadDir(pack),
-                                        false);
-
-                                Thread thread = new Thread(unzip, "Unzipping");
-                                thread.start();
-
-                                Timer installTimer = new Timer();
-                                installTimer.schedule(new TimerTask() {
-                                    @Override
-                                    public void run() {
-                                        if (unzip.isEnded()) {
-                                            installTimer.cancel();
-                                            moveContentsToMinecraft("mods", notIn);
-                                            if (pack.hasShaders()) {
-                                                renameShaders(alreadyShaders);
-                                                moveContentsToMinecraft("shaderpacks", notShaders);
-                                            }
-                                            if (pack.hasTextures()) {
-                                                renameTextures(alreadyResources);
-                                                moveContentsToMinecraft("resourcepacks", notResources);
-                                            }
-                                        }
-                                    }
-                                }, 0, TimeUnit.SECONDS.toMillis(1));
-                                return "SUCCESS";
-                            } else {
-                                return "DOWNLOAD_NEED";
-                            }
-                        } else {
-                            moveContentsToMinecraft("mods", notIn);
-                            return "SUCCESS";
-                        }
-                    } finally {
-                        utils.setProgress("Download status bar", 1);
-                    }
+                    moveContentsToMinecraft("mods");
+                    return "SUCCESS";
                 }
-            } else {
-                return "ALREADY_INSTALLED";
+            } finally {
+                utils.setProgress("Download status bar", 1);
             }
         } else {
-            return "EMPTY";
+            SelectiveSelection already = new SelectiveSelection();
+            SelectiveSelection notIn = new SelectiveSelection();
+
+            SelectiveSelection alreadyShaders = new SelectiveSelection();
+            SelectiveSelection notShaders = new SelectiveSelection();
+
+            SelectiveSelection alreadyResources = new SelectiveSelection();
+            SelectiveSelection notResources = new SelectiveSelection();
+
+            for (File mod : currentInMods) {
+                if (currentMods.contains(mod)) {
+                    already.addSelectedFile(mod);
+                } else {
+                    notIn.addSelectedFile(mod);
+                }
+            }
+
+            if (!notIn.isEmpty()) {
+                File[] packShaders = FilesUtilities.getModpackShaders(pack).listFiles();
+                if (packShaders != null && !Arrays.asList(packShaders).isEmpty()) {
+                    ArrayList<File> mcShaders = new ArrayList<>();
+                    File[] mcShadersZips = new File(FilesUtilities.getMinecraftDir() + "/shaderpacks").listFiles();
+                    if (mcShadersZips != null && !Arrays.asList(mcShadersZips).isEmpty()) {
+                        for (File shader : mcShadersZips) {
+                            if (Downloader.isZip(shader)) {
+                                mcShaders.add(shader);
+                            }
+                        }
+                    }
+
+                    for (File shader : packShaders) {
+                        if (mcShaders.contains(shader)) {
+                            alreadyShaders.addSelectedFile(shader);
+                        } else {
+                            notShaders.addSelectedFile(shader);
+                        }
+                    }
+                }
+
+                File[] packResources = FilesUtilities.getModpackTextures(pack).listFiles();
+                if (packResources != null && !Arrays.asList(packResources).isEmpty()) {
+                    ArrayList<File> mcResources = new ArrayList<>();
+                    File[] mcResourcesZips = new File(FilesUtilities.getMinecraftDir() + "/resourcepacks").listFiles();
+                    if (mcResourcesZips != null && !Arrays.asList(mcResourcesZips).isEmpty()) {
+                        for (File shader : mcResourcesZips) {
+                            if (Downloader.isZip(shader)) {
+                                mcResources.add(shader);
+                            }
+                        }
+                    }
+
+                    for (File shader : packResources) {
+                        if (mcResources.contains(shader)) {
+                            alreadyResources.addSelectedFile(shader);
+                        } else {
+                            notResources.addSelectedFile(shader);
+                        }
+                    }
+                }
+
+                moveMods(already);
+                try {
+                    if (pack.isZip()) {
+                        File zFile = new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip");
+
+                        if (zFile.exists()) {
+                            Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(pack), "modpack.zip")
+                                    , FilesUtilities.getModpackDownloadDir(pack), false);
+
+                            Thread thread = new Thread(unzip, "Unzipping");
+                            thread.start();
+
+                            Timer installTimer = new Timer();
+                            installTimer.schedule(new TimerTask() {
+                                @SneakyThrows
+                                @Override
+                                public void run() {
+                                    if (unzip.isEnded()) {
+                                        installTimer.cancel();
+                                        moveContentsToMinecraft("mods", notIn);
+                                        if (pack.hasShaders()) {
+                                            renameShaders(alreadyShaders);
+                                            moveContentsToMinecraft("shaderpacks", notShaders);
+                                        }
+                                        if (pack.hasTextures()) {
+                                            renameTextures(alreadyResources);
+                                            moveContentsToMinecraft("resourcepacks", notResources);
+                                        }
+                                        if (pack.hasVersion()) {
+                                            pack.installVersion();
+                                        }
+                                    }
+                                }
+                            }, 0, TimeUnit.SECONDS.toMillis(1));
+                            return "SUCCESS";
+                        } else {
+                            return "DOWNLOAD_NEED";
+                        }
+                    } else {
+                        if (pack.hasVersion()) {
+                            pack.installVersion();
+                        }
+
+                        moveContentsToMinecraft("mods", notIn);
+                        return "SUCCESS";
+                    }
+                } finally {
+                    utils.setProgress("Download status bar", 1);
+                }
+            } else {
+                return "ALREADY";
+            }
+        }
+    }
+
+    private boolean copy(File file, File dest) {
+        try {
+            FileUtils.copyFileToDirectory(file, dest);
+            return true;
+        } catch (Throwable e) {
+            return false;
         }
     }
 
@@ -223,9 +235,8 @@ public final class Installer {
             int error = 0;
             for (File file : files) {
                 total++;
-                File destFile = new File(destDir, file.getName());
 
-                if (file.renameTo(destFile)) {
+                if (copy(file, destDir)) {
                     success++;
                     green.add("Moved file " + file.getName() + " to " + FilesUtilities.getPath(destDir));
                 } else {
@@ -235,12 +246,12 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " files <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " files <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
@@ -264,7 +275,7 @@ public final class Installer {
                 File destFile = new File(destDir, file.getName());
 
                 if (notIn.isSelectiveFile(destFile)) {
-                    if (file.renameTo(destFile)) {
+                    if (copy(file, destDir)) {
                         success++;
                         green.add("Moved file " + file.getName() + " to " + FilesUtilities.getPath(destDir));
                     } else {
@@ -275,50 +286,18 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " files <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " files <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
     @SneakyThrows
     private void moveMods() {
-        {
-            utils.setDebug(utils.rgbColor("Cleaning modpack mods folder...", 155, 240, 175), false);
-            File[] mods = FilesUtilities.getModpackMods(pack).listFiles();
-            if (mods != null && !Arrays.asList(mods).isEmpty()) {
-                ArrayList<String> green = new ArrayList<>();
-                ArrayList<String> red = new ArrayList<>();
-
-                int total = 0;
-                int success = 0;
-                int error = 0;
-                for (File mod : mods) {
-                    if (Downloader.isMod(mod)) {
-                        total++;
-                        if (mod.delete()) {
-                            green.add("Removed old mod " + mod.getName() + " from " + FilesUtilities.getPath(FilesUtilities.getModpackMods(pack)));
-                            success++;
-                        } else {
-                            red.add("Failed to move mod " + mod.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is the modpack updater using the folder?</span>");
-                            error++;
-                        }
-                    }
-                }
-
-                if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                }
-                if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-                }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
-            }
-        }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft mods folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft mods folder...", 155, 240, 175), true);
         File[] mods = new File(FilesUtilities.getMinecraftDir() + "/mods").listFiles();
         if (mods != null && !Arrays.asList(mods).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -341,51 +320,17 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
     private void moveMods(SelectiveSelection ignore) {
-        {
-            utils.setDebug(utils.rgbColor("Cleaning modpack mods folder...", 155, 240, 175), false);
-            File[] mods = FilesUtilities.getModpackMods(pack).listFiles();
-            if (mods != null && !Arrays.asList(mods).isEmpty()) {
-                ArrayList<String> green = new ArrayList<>();
-                ArrayList<String> red = new ArrayList<>();
-
-                int total = 0;
-                int success = 0;
-                int error = 0;
-                for (File mod : mods) {
-                    if (!ignore.isSelectiveFile(mod)) {
-                        if (Downloader.isMod(mod)) {
-                            total++;
-                            if (mod.delete()) {
-                                green.add("Removed old mod " + mod.getName() + " from " + FilesUtilities.getPath(FilesUtilities.getModpackMods(pack)));
-                                success++;
-                            } else {
-                                red.add("Failed to move mod " + mod.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is the modpack updater using the folder?</span>");
-                                error++;
-                            }
-                        }
-                    }
-                }
-
-                if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                }
-                if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-                }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
-            }
-        }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft mods folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft mods folder...", 155, 240, 175), true);
         File[] mods = new File(FilesUtilities.getMinecraftDir() + "/mods").listFiles();
         if (mods != null && !Arrays.asList(mods).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -410,50 +355,18 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
     
     @SneakyThrows
     private void renameTextures() {
-        {
-            utils.setDebug(utils.rgbColor("Cleaning modpack updater resourcepacks folder...", 155, 240, 175), false);
-            File[] texturepacks = FilesUtilities.getModpackTextures(pack).listFiles();
-            if (texturepacks != null && !Arrays.asList(texturepacks).isEmpty()) {
-                ArrayList<String> green = new ArrayList<>();
-                ArrayList<String> red = new ArrayList<>();
-
-                int total = 0;
-                int success = 0;
-                int error = 0;
-                for (File texturepack : texturepacks) {
-                    if (Downloader.isZip(texturepack)) {
-                        total++;
-                        if (texturepack.delete()) {
-                            green.add("Removed old texturepack " + texturepack.getName() + " from " + FilesUtilities.getPath(FilesUtilities.getModpackTextures(pack)));
-                            success++;
-                        } else {
-                            red.add("Failed to remove old texturepack " + texturepack.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is the modpack updater using the folder?</span>");
-                            error++;
-                        }
-                    }
-                }
-
-                if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                }
-                if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-                }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
-            }
-        }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft resourcepacks folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft resourcepacks folder...", 155, 240, 175), true);
         File[] texturepacks = new File(FilesUtilities.getMinecraftDir() + "/resourcepacks").listFiles();
         if (texturepacks != null && !Arrays.asList(texturepacks).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -476,52 +389,18 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
     @SneakyThrows
     private void renameTextures(SelectiveSelection ignore) {
-        {
-            utils.setDebug(utils.rgbColor("Cleaning modpack updater resourcepacks folder...", 155, 240, 175), false);
-            File[] texturepacks = FilesUtilities.getModpackTextures(pack).listFiles();
-            if (texturepacks != null && !Arrays.asList(texturepacks).isEmpty()) {
-                ArrayList<String> green = new ArrayList<>();
-                ArrayList<String> red = new ArrayList<>();
-
-                int total = 0;
-                int success = 0;
-                int error = 0;
-                for (File texturepack : texturepacks) {
-                    if (!ignore.isSelectiveFile(texturepack)) {
-                        if (Downloader.isZip(texturepack)) {
-                            total++;
-                            if (texturepack.delete()) {
-                                green.add("Removed old texturepack " + texturepack.getName() + " from " + FilesUtilities.getPath(FilesUtilities.getModpackTextures(pack)));
-                                success++;
-                            } else {
-                                red.add("Failed to remove old texturepack " + texturepack.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is the modpack updater using the folder?</span>");
-                                error++;
-                            }
-                        }
-                    }
-                }
-
-                if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                }
-                if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-                }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
-            }
-        }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft resourcepacks folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft resourcepacks folder...", 155, 240, 175), true);
         File[] texturepacks = new File(FilesUtilities.getMinecraftDir() + "/resourcepacks").listFiles();
         if (texturepacks != null && !Arrays.asList(texturepacks).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -546,50 +425,18 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
     @SneakyThrows
     private void renameShaders() {
-        {
-            utils.setDebug(utils.rgbColor("Cleaning modpack updater shaderpacks folder...", 155, 240, 175), false);
-            File[] shaderpacks = FilesUtilities.getModpackShaders(pack).listFiles();
-            if (shaderpacks != null && !Arrays.asList(shaderpacks).isEmpty()) {
-                ArrayList<String> green = new ArrayList<>();
-                ArrayList<String> red = new ArrayList<>();
-
-                int total = 0;
-                int success = 0;
-                int error = 0;
-                for (File shaderpack : shaderpacks) {
-                    if (Downloader.isZip(shaderpack)) {
-                        total++;
-                        if (shaderpack.delete()) {
-                            green.add("Removed old shaderpack " + shaderpack.getName() + " from " + FilesUtilities.getPath(FilesUtilities.getModpackShaders(pack)));
-                            success++;
-                        } else {
-                            red.add("Failed to remove old shaderpack " + shaderpack.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is the modpack updater using the folder?</span>");
-                            error++;
-                        }
-                    }
-                }
-
-                if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                }
-                if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-                }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
-            }
-        }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft shaderpacks folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft shaderpacks folder...", 155, 240, 175), true);
         File[] shaderpacks = new File(FilesUtilities.getMinecraftDir() + "/shaderpacks").listFiles();
         if (shaderpacks != null && !Arrays.asList(shaderpacks).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -612,52 +459,18 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
     @SneakyThrows
     private void renameShaders(SelectiveSelection ignore) {
-        {
-            utils.setDebug(utils.rgbColor("Cleaning modpack updater shaderpacks folder...", 155, 240, 175), false);
-            File[] shaderpacks = FilesUtilities.getModpackShaders(pack).listFiles();
-            if (shaderpacks != null && !Arrays.asList(shaderpacks).isEmpty()) {
-                ArrayList<String> green = new ArrayList<>();
-                ArrayList<String> red = new ArrayList<>();
-
-                int total = 0;
-                int success = 0;
-                int error = 0;
-                for (File shaderpack : shaderpacks) {
-                    if (!ignore.isSelectiveFile(shaderpack)) {
-                        if (Downloader.isZip(shaderpack)) {
-                            total++;
-                            if (shaderpack.delete()) {
-                                green.add("Removed old shaderpack " + shaderpack.getName() + " from " + FilesUtilities.getPath(FilesUtilities.getModpackShaders(pack)));
-                                success++;
-                            } else {
-                                red.add("Failed to remove old shaderpack " + shaderpack.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is the modpack updater using the folder?</span>");
-                                error++;
-                            }
-                        }
-                    }
-                }
-
-                if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                }
-                if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-                }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
-            }
-        }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft shaderpacks folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft shaderpacks folder...", 155, 240, 175), true);
         File[] shaderpacks = new File(FilesUtilities.getMinecraftDir() + "/shaderpacks").listFiles();
         if (shaderpacks != null && !Arrays.asList(shaderpacks).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -682,19 +495,19 @@ public final class Installer {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
     
     private ArrayList<File> getMods() {
         ArrayList<File> mods = new ArrayList<>();
 
-        File[] currentMods = new File(MainFrame.mcFolder + "/mods").listFiles();
+        File[] currentMods = new File(FilesUtilities.getMinecraftDir() + "/mods").listFiles();
         if (currentMods != null && !Arrays.asList(currentMods).isEmpty()) {
             for (File mod : currentMods) {
                 if (Downloader.isMod(mod)) {
@@ -704,5 +517,27 @@ public final class Installer {
         }
 
         return mods;
+    }
+
+    private ArrayList<File> getInMods() {
+        ArrayList<File> mods = new ArrayList<>();
+
+        File[] currentMods = new File(FilesUtilities.getModpackDownloadDir(pack) + "/mods").listFiles();
+        if (currentMods != null && !Arrays.asList(currentMods).isEmpty()) {
+            for (File mod : currentMods) {
+                if (Downloader.isMod(mod)) {
+                    mods.add(mod);
+                }
+            }
+        }
+
+        ArrayList<File> staticMods = new ArrayList<>();
+        for (File mod : mods) {
+            File staticMod = new File(FilesUtilities.getMinecraftDir() + "/mods", mod.getName());
+
+            staticMods.add(staticMod);
+        }
+
+        return staticMods;
     }
 }

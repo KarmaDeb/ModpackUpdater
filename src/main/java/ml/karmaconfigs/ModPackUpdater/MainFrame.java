@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
+import ml.karmaconfigs.ModPackUpdater.Utils.Launcher.Profiler;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Downloader;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Installer;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.ListMods;
@@ -16,13 +17,20 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.MouseInputAdapter;
 import java.awt.*;
+import java.awt.event.*;
 import java.io.File;
-import java.util.ArrayList;
+import java.io.FileOutputStream;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainFrame {
+
+    private static boolean shift = false;
 
     public static String version = MainFrame.class.getPackage().getImplementationVersion();
 
@@ -35,7 +43,11 @@ public class MainFrame {
 
     public static JScrollPane jsp;
 
+    public static JSplitPane modpackLabel;
+
     public static JProgressBar bar;
+
+    private static JTextArea dlURL;
 
     public static File mcFolder;
 
@@ -45,12 +57,7 @@ public class MainFrame {
     public void initFrame() {
         Utils utils = new Utils();
         mcFolder = FilesUtilities.getConfig.getMinecraftDir();
-        frame = new JFrame() {
-            @Override
-            public Dimension getPreferredSize() {
-                return new Dimension(1600, 900);
-            }
-        };
+        frame = new JFrame();
 
         try {
             frame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
@@ -81,7 +88,7 @@ public class MainFrame {
         JCheckBox hardInstall = new JCheckBox("Hard install");
 
         //Text areas
-        JTextArea dlURL = new JTextArea("Modpack download.txt url");
+        dlURL = new JTextArea("Modpack download.txt url");
         dlURL.setText(FilesUtilities.getConfig.getDownloadURL());
 
         //Buttons
@@ -113,7 +120,7 @@ public class MainFrame {
         JSplitPane leftTop = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionsPanel, managerPanel);
 
         JSplitPane themeLabel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, themeText, theme);
-        JSplitPane modpackLabel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, packText, modpacks);
+        modpackLabel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, packText, modpacks);
 
         JSplitPane managerSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, themePane, modpackPane);
         JSplitPane optionSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, leftTop, managerSplitter);
@@ -167,6 +174,7 @@ public class MainFrame {
             bPane.setBackground(Color.DARK_GRAY);
         }
 
+        frame.setPreferredSize(new Dimension(1280, 720));
         frame.setTitle("ModPack updater by KarmaDev " + version);
         frame.add(splitter);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -174,6 +182,26 @@ public class MainFrame {
         frame.setVisible(true);
         Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
         frame.setLocation(dim.width/2-frame.getSize().width/2, dim.height/2-frame.getSize().height/2);
+        frame.setMinimumSize(new Dimension(800, 800));
+
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(ke -> {
+            synchronized (MainFrame.class) {
+                switch (ke.getID()) {
+                    case KeyEvent.KEY_PRESSED:
+                        if (ke.getKeyCode() == KeyEvent.VK_SHIFT || ke.getKeyCode() == KeyEvent.VK_CONTROL) {
+                            shift = true;
+                        }
+                        break;
+
+                    case KeyEvent.KEY_RELEASED:
+                        if (ke.getKeyCode() == KeyEvent.VK_SHIFT || ke.getKeyCode() == KeyEvent.VK_CONTROL) {
+                            shift = false;
+                        }
+                        break;
+                }
+                return false;
+            }
+        });
 
         theme.addActionListener(e -> {
             String oldTheme = FilesUtilities.getConfig.getTheme();
@@ -186,17 +214,26 @@ public class MainFrame {
                             case "Light":
                                 bPane.setOpaque(true);
                                 bPane.setBackground(Color.DARK_GRAY);
+                                if (Utils.info != null && Utils.infoScrollable != null) {
+                                    Utils.infoScrollable.setBackground(Color.DARK_GRAY);
+                                }
                                 UIManager.setLookAndFeel(FlatLightLaf.class.getCanonicalName());
                                 break;
                             case "Dark":
                                 bPane.setOpaque(true);
                                 bPane.setBackground(Color.DARK_GRAY);
                                 UIManager.setLookAndFeel(FlatDarkLaf.class.getCanonicalName());
+                                if (Utils.info != null && Utils.infoScrollable != null) {
+                                    Utils.infoScrollable.setBackground(Color.DARK_GRAY);
+                                }
                                 break;
                             case "System default":
                                 bPane.setOpaque(true);
                                 bPane.setBackground(Color.GRAY);
                                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                                if (Utils.info != null && Utils.infoScrollable != null) {
+                                    Utils.infoScrollable.setBackground(Color.GRAY);
+                                }
                                 break;
                             default:
                                 utils.setDebug(utils.rgbColor("Failed to change theme", 255, 0, 0), true);
@@ -213,6 +250,10 @@ public class MainFrame {
                     if (CreateFrame.creatorFrame != null) {
                         SwingUtilities.updateComponentTreeUI(CreateFrame.creatorFrame);
                     }
+                    if (Utils.info != null) {
+                        SwingUtilities.updateComponentTreeUI(Utils.info);
+                    }
+                    SwingUtilities.updateComponentTreeUI(CreateFrame.chooser);
                 });
             } catch (Throwable ex) {
                 utils.log(ex);
@@ -231,20 +272,29 @@ public class MainFrame {
                 urlDir = dlURL.getText();
             }
 
-            utils.setDebug(utils.rgbColor("Checking modpack, please wait...", 155, 210, 50), true);
+            if (urlDir.endsWith("/")) {
+                urlDir = urlDir.substring(0, urlDir.length() - 1);
+            }
+
+            utils.setDebug(utils.rgbColor("Checking modpack from the url " + urlDir + ", please wait...", 155, 210, 50), true);
 
             try {
-                String name = utils.getModpackName(urlDir);
+                Modpack modpack = new Modpack(utils.getModpackName(urlDir));
+                if (!modpack.exists()) {
+                    URL downloadURL = new URL(urlDir);
+                    ReadableByteChannel rbc = Channels.newChannel(downloadURL.openStream());
+                    FileOutputStream fos = new FileOutputStream(FilesUtilities.getFileFromURL(urlDir));
+                    fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+                }
 
-                if(((DefaultComboBoxModel<String>)modpacks.getModel()).getIndexOf(name) == -1) {
-                    modpacks.addItem(name);
-                    modpacks.setSelectedItem(name);
+                if(((DefaultComboBoxModel<String>)modpacks.getModel()).getIndexOf(modpack.getName()) == -1) {
+                    modpacks.addItem(modpack.getName());
+                    modpacks.setSelectedItem(modpack.getName());
                     dlURL.setText(urlDir);
                 }
             } catch (Throwable ex) {
                 utils.log(ex);
             }
-
 
             try {
                 if (!utils.isOutdated(urlDir)) {
@@ -269,47 +319,24 @@ public class MainFrame {
         });
 
         list.addActionListener(e -> {
-            utils.setDebug(utils.rgbColor("Listing mods: (green = downloaded) (red = needs to update)", 255, 100, 100), true);
+            String urlDir;
+
+            if (!dlURL.getText().contains("http://") && !dlURL.getText().contains("https://")) {
+                urlDir = "http://" + dlURL.getText();
+            } else {
+                urlDir = dlURL.getText();
+            }
+
+            if (urlDir.endsWith("/")) {
+                urlDir = urlDir.substring(0, urlDir.length() - 1);
+            }
+
+            utils.setDebug(utils.rgbColor("Listing mods from url: " + urlDir + " (<span style=\"color: rgb(155, 240, 175);\">green</span> = downloaded) (<span style=\"color: rgb(220, 100, 100);\">red</span> = needs to update)", 155, 210, 50), true);
             try {
-                String urlDir;
-
-                if (!dlURL.getText().contains("http://") && !dlURL.getText().contains("https://")) {
-                    urlDir = "http://" + dlURL.getText();
-                } else {
-                    urlDir = dlURL.getText();
-                }
-
                 ListMods listMods = new ListMods(urlDir);
-                ArrayList<File> listedMods = listMods.getMods();
-                if (!listedMods.isEmpty()) {
-                    int mods = 0;
-                    int greenM = 0;
-                    int redM = 0;
 
-                    ArrayList<String> green = new ArrayList<>();
-                    ArrayList<String> red = new ArrayList<>();
-                    for (File listedMod : listedMods) {
-                        mods++;
-                        String path = FilesUtilities.getPath(listedMod);
-                        if (utils.ModExists(listedMod)) {
-                            green.add("( " + mods + " ) " + path);
-                            greenM++;
-                        } else {
-                            red.add("( " + mods + " ) " + path);
-                            redM++;
-                        }
-                    }
-
-                    if (!green.isEmpty()) {
-                        utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                    }
-                    if (!red.isEmpty()) {
-                        utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-                    }
-                    utils.setDebug(utils.rgbColor("Listed a total of " + mods + " mods <span style=\" color: green;\">" + greenM + "</span> downloaded and <span style=\" color: red;\">" + redM + "</span> needed of update", 255, 100, 100), false);
-                } else {
-                    utils.setDebug(utils.rgbColor("Error while retrieving mod list...", 220, 100, 100), false);
-                }
+                Thread thread = new Thread(listMods, "Listing");
+                thread.start();
             } catch (Throwable ex) {
                 utils.log(ex);
                 utils.setDebug(utils.rgbColor("Error while retrieving mod list...", 220, 100, 100), false);
@@ -317,8 +344,15 @@ public class MainFrame {
         });
 
         createPanel.addActionListener(e -> SwingUtilities.invokeLater(() -> {
-            CreateFrame newFrame = new CreateFrame();
-            newFrame.display();
+            if (CreateFrame.creatorFrame == null) {
+                CreateFrame newFrame = new CreateFrame();
+                newFrame.display();
+            } else {
+                if (!CreateFrame.creatorFrame.isVisible()) {
+                    CreateFrame.creatorFrame.setVisible(true);
+                }
+                CreateFrame.creatorFrame.toFront();
+            }
         }));
 
         dlURL.getDocument().addDocumentListener(new DocumentListener() {
@@ -339,55 +373,150 @@ public class MainFrame {
         });
 
         modpacks.addActionListener(e -> {
-            if (modpacks.getSelectedItem() != null) {
-                String name = modpacks.getSelectedItem().toString();
+            Object modpackName = modpacks.getSelectedItem();
 
+            if (modpackName != null) {
+                String name = modpackName.toString();
                 Modpack modpack = new Modpack(name);
 
-                String urlDir;
+                if (modpack.exists()) {
+                    String urlDir;
 
-                if (!dlURL.getText().contains("http://") && !dlURL.getText().contains("https://")) {
-                    urlDir = "http://" + dlURL.getText();
-                } else {
-                    urlDir = dlURL.getText();
+                    if (!modpack.getDownloadURL().contains("http://") && !modpack.getDownloadURL().contains("https://")) {
+                        urlDir = "http://" + modpack.getDownloadURL();
+                    } else {
+                        urlDir = modpack.getDownloadURL();
+                    }
+
+                    if (urlDir.endsWith("/")) {
+                        urlDir = urlDir.substring(0, urlDir.length() - 1);
+                    }
+
+                    utils.setDebug(utils.rgbColor("Detected modpack " + modpack.getName() + " url: " + urlDir, 155, 240, 175), true);
+                    dlURL.setText(urlDir);
+
+                    FilesUtilities.getConfig.saveDownloadURL(urlDir);
                 }
+            }
+        });
 
-                if (!urlDir.equals(modpack.getDownloadURL())) {
-                    dlURL.setText(modpack.getDownloadURL());
+        modpacks.addMouseListener(new MouseInputAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+
+                if (shift) {
+                    Object modpackName = modpacks.getSelectedItem();
+                    if (modpackName != null) {
+                        Modpack modpack = new Modpack(modpackName.toString());
+                        if (modpack.exists()) {
+                            utils.displayPackInfo(modpack);
+                        }
+                    }
                 }
             }
         });
 
         install.addActionListener(e -> {
-            if (modpacks.getSelectedItem() != null) {
-                Modpack modpack = new Modpack(String.valueOf(modpacks.getSelectedItem()));
+            try {
+                if (modpacks.getSelectedItem() != null) {
+                    String urlDir;
 
-                Installer installer = new Installer(modpack, hardInstall.isSelected());
+                    if (!dlURL.getText().contains("http://") && !dlURL.getText().contains("https://")) {
+                        urlDir = "http://" + dlURL.getText();
+                    } else {
+                        urlDir = dlURL.getText();
+                    }
 
-                String result = installer.install();
+                    if (urlDir.endsWith("/")) {
+                        urlDir = urlDir.substring(0, urlDir.length() - 1);
+                    }
 
-                switch (result) {
-                    case "SUCCESS":
-                        utils.setDebug(utils.rgbColor("Installed modpack " + modpack.getName() + " using its latest downloaded files...", 155, 240, 175), true);
-                        break;
-                    case "ALREADY_INSTALLED":
-                        utils.setDebug(utils.rgbColor("Modpack " + modpack.getName() + " is already installed and updated", 220, 100, 100), true);
-                        break;
-                    case "EMPTY":
-                        utils.setDebug(utils.rgbColor("Modpack " + modpack.getName() + " mod list is empty", 220, 100, 100), true);
-                        break;
-                    case "DOWNLOAD_NEED":
-                        utils.setDebug(utils.rgbColor("Can't access modpack " + modpack.getName() + " cache files, please download and install it again", 220, 100, 100), true);
-                        break;
-                    default:
-                        utils.setDebug(utils.rgbColor("Unexpected install result: " + result, 220, 100, 100), true);
-                        break;
-                }
-            } else {
-                if (modpacks.getItemCount() != 0) {
-                    utils.setDebug(utils.rgbColor("Please choose a modpack from the list", 220, 100, 100), true);
+                    Modpack modpack = new Modpack(String.valueOf(modpacks.getSelectedItem()));
+
+                    if (!modpack.exists()) {
+                        if (!modpack.exists()) {
+                            URL downloadURL = new URL(urlDir);
+                            ReadableByteChannel rbc = Channels.newChannel(downloadURL.openStream());
+                            FileOutputStream fos = new FileOutputStream(FilesUtilities.getFileFromURL(urlDir));
+                            fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+                        }
+                    }
+
+                    Installer installer = new Installer(modpack, hardInstall.isSelected());
+
+                    String result = installer.install();
+
+                    switch (result) {
+                        case "SUCCESS":
+                            utils.setDebug(utils.rgbColor("Installed modpack " + modpack.getName() + " using its latest downloaded files...", 155, 240, 175), true);
+                            break;
+                        case "EMPTY":
+                            utils.setDebug(utils.rgbColor("Modpack " + modpack.getName() + " mod list is empty", 220, 100, 100), true);
+                            break;
+                        case "ALREADY":
+                            utils.setDebug(utils.rgbColor("The modpack " + modpack.getName() + " is already installed, check hard install to force the install", 220, 100, 100), true);
+                            break;
+                        default:
+                            utils.setDebug(utils.rgbColor("Unexpected install result: " + result, 220, 100, 100), true);
+                            break;
+                    }
                 } else {
-                    utils.setDebug(utils.rgbColor("Please download at least one modpack first", 220, 100, 100), true);
+                    if (modpacks.getItemCount() != 0) {
+                        utils.setDebug(utils.rgbColor("Please choose a modpack from the list", 220, 100, 100), true);
+                    } else {
+                        utils.setDebug(utils.rgbColor("Please download at least one modpack first", 220, 100, 100), true);
+                    }
+                }
+            } catch (Throwable ex) {
+                utils.log(ex);
+            }
+        });
+    }
+
+    public static void restartModpacksListeners() {
+        Utils utils = new Utils();
+        modpacks.addActionListener(e -> {
+            Object modpackName = modpacks.getSelectedItem();
+
+            if (modpackName != null) {
+                String name = modpackName.toString();
+                Modpack modpack = new Modpack(name);
+
+                if (modpack.exists()) {
+                    String urlDir;
+
+                    if (!modpack.getDownloadURL().contains("http://") && !modpack.getDownloadURL().contains("https://")) {
+                        urlDir = "http://" + modpack.getDownloadURL();
+                    } else {
+                        urlDir = modpack.getDownloadURL();
+                    }
+
+                    if (urlDir.endsWith("/")) {
+                        urlDir = urlDir.substring(0, urlDir.length() - 1);
+                    }
+
+                    utils.setDebug(utils.rgbColor("Detected modpack " + modpack.getName() + " url: " + urlDir, 155, 240, 175), true);
+                    dlURL.setText(urlDir);
+
+                    FilesUtilities.getConfig.saveDownloadURL(urlDir);
+                }
+            }
+        });
+
+        modpacks.addMouseListener(new MouseInputAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+
+                if (shift) {
+                    Object modpackName = modpacks.getSelectedItem();
+                    if (modpackName != null) {
+                        Modpack modpack = new Modpack(modpackName.toString());
+                        if (modpack.exists()) {
+                            utils.displayPackInfo(modpack);
+                        }
+                    }
                 }
             }
         });

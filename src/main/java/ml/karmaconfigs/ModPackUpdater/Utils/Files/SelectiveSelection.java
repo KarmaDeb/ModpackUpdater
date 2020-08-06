@@ -14,4 +14,8 @@ public final class SelectiveSelection {
     public final boolean isSelectiveFile(File file) {
         return selectedFiles.contains(file);
     }
+
+    public final boolean isEmpty() {
+        return selectedFiles.isEmpty();
+    }
 }

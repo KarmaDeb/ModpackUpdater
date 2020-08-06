@@ -10,6 +10,8 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public final class CreateFrame {
 
@@ -17,8 +19,7 @@ public final class CreateFrame {
 
     public static JFrame creatorFrame;
 
-    private static final JFileChooser chooser = new JFileChooser();
-    private static final JPanel emptyPanel = new JPanel();
+    public static final JFileChooser chooser = new JFileChooser();
 
     private static JTextArea url;
     private static JTextArea name;
@@ -29,18 +30,17 @@ public final class CreateFrame {
     private static JCheckBox createAsZip;
     private static JCheckBox includeShaders;
     private static JCheckBox includeTextures;
+    private static JCheckBox unzipDebug;
 
-    private static JSplitPane optionPanel;
-
-    private static JSplitPane buildOptions;
+    private static JComboBox<String> version;
 
     private File mcFolder = FilesUtilities.getConfig.getMinecraftDir();
 
     public CreateFrame() {
+        version = new JComboBox<>(ListVersions.listing.versions());
         if (creatorFrame == null) {
             creatorFrame = new JFrame();
-
-            creatorFrame.setPreferredSize(new Dimension(750, 550));
+            creatorFrame.setPreferredSize(new Dimension(900, 600));
 
             try {
                 creatorFrame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
@@ -68,25 +68,43 @@ public final class CreateFrame {
             }
             if (createAsZip == null) {
                 createAsZip = new JCheckBox("Zip modpack");
-                createAsZip.setSelected(true);
+                createAsZip.setSelected(FilesUtilities.getConfig.createAsZip());
             }
             if (includeShaders == null) {
                 includeShaders = new JCheckBox("Zip shaders");
+                if (createAsZip.isSelected()) {
+                    includeShaders.setSelected(FilesUtilities.getConfig.zipShaders());
+                } else {
+                    includeShaders.setSelected(false);
+                    includeShaders.setEnabled(false);
+                }
             }
             if (includeTextures == null) {
                 includeTextures = new JCheckBox("Zip texture packs");
+                if (createAsZip.isSelected()) {
+                    includeTextures.setSelected(FilesUtilities.getConfig.zipTextures());
+                } else {
+                    includeTextures.setSelected(false);
+                    includeTextures.setEnabled(false);
+                }
+            }
+            if (unzipDebug == null) {
+                unzipDebug = new JCheckBox("Perform unzip debug");
+                if (createAsZip.isSelected()) {
+                    unzipDebug.setSelected(FilesUtilities.getConfig.zipDebug());
+                } else {
+                    unzipDebug.setSelected(false);
+                    unzipDebug.setEnabled(false);
+                }
             }
 
             JSplitPane optionsSplitOne = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createModPack, openDownloadDir);
-            JSplitPane optionsSplitTwo = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createAsZip, includeShaders);
-            JSplitPane optionsSplitThree = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, includeTextures, new JPanel());
-            if (optionPanel == null) {
-                optionPanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, optionsSplitTwo, optionsSplitThree);
-            }
-
-            if (buildOptions == null) {
-                buildOptions = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, optionsSplitOne, optionPanel);
-            }
+            JSplitPane zipOptionsOne = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, includeShaders, includeTextures);
+            JSplitPane zipOptionsTwo = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, zipOptionsOne, unzipDebug);
+            JSplitPane zipOptionsThree = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, zipOptionsTwo, version);
+            JSplitPane zipOptionsFinal = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, zipOptionsThree, new JPanel());
+            JSplitPane optionPanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createAsZip, zipOptionsFinal);
+            JSplitPane buildOptions = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, optionsSplitOne, optionPanel);
             JSplitPane chooserTitle = new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JLabel("<html><h1>Select your minecraft folder where /mods are located</h1></html>"), chooser);
             JSplitPane buildPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, buildOptions, chooserTitle);
             JSplitPane urlSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, name, url);
@@ -95,7 +113,7 @@ public final class CreateFrame {
             JPanel panel = new JPanel();
             panel.add(urlField);
 
-            disableResize(buildOptions, optionsSplitOne, optionsSplitTwo, optionsSplitThree, urlSplitter, optionPanel, chooserTitle, buildPane, urlField);
+            disableResize(buildOptions, optionsSplitOne, zipOptionsOne, zipOptionsTwo, zipOptionsThree,  zipOptionsFinal, urlSplitter, optionPanel, chooserTitle, buildPane, urlField);
 
             creatorFrame.setTitle("Create a new modpack");
             creatorFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
@@ -108,108 +126,180 @@ public final class CreateFrame {
     }
 
     public void display() {
-        creatorFrame.setVisible(true);
+        if (version.getItemCount() > 0) {
+            creatorFrame.setVisible(true);
 
-        createAsZip.addActionListener(e -> {
-            if (createAsZip.isSelected()) {
-                buildOptions.remove(emptyPanel);
-                buildOptions.add(optionPanel);
-            } else {
-                includeShaders.setSelected(false);
-                includeTextures.setSelected(false);
-                buildOptions.remove(optionPanel);
-                buildOptions.add(emptyPanel);
-            }
-        });
+            createAsZip.addActionListener(e -> {
+                includeTextures.setEnabled(createAsZip.isSelected());
+                includeShaders.setEnabled(createAsZip.isSelected());
+                unzipDebug.setEnabled(createAsZip.isSelected());
 
-        chooser.addActionListener(e -> {
-            if (e.getActionCommand().contains("Approve")) {
-                if (!chooser.getSelectedFile().equals(mcFolder)) {
-                    mcFolder = chooser.getSelectedFile();
-                    utils.setDebug(utils.rgbColor("Changed minecraft directory to: " + FilesUtilities.getPath(mcFolder), 120, 200, 155), true);
-                    FilesUtilities.getConfig.saveMinecraftDir();
+                if (!createAsZip.isSelected()) {
+                    FilesUtilities.getConfig.saveCreatorOptions(createAsZip.isSelected(), includeTextures.isSelected(), includeShaders.isSelected(), unzipDebug.isSelected());
+                    includeTextures.setSelected(false);
+                    includeShaders.setSelected(false);
+                    unzipDebug.setSelected(false);
                 } else {
-                    utils.setDebug(utils.rgbColor("Same minecraft directory selected, nothing changed", 110, 150, 150), false);
+                    includeTextures.setSelected(FilesUtilities.getConfig.zipTextures());
+                    includeShaders.setSelected(FilesUtilities.getConfig.zipShaders());
+                    unzipDebug.setSelected(FilesUtilities.getConfig.zipDebug());
+                    FilesUtilities.getConfig.saveCreatorOptions(createAsZip.isSelected(), includeTextures.isSelected(), includeShaders.isSelected(), unzipDebug.isSelected());
                 }
-            } else {
-                if (e.getActionCommand().equals(JFileChooser.CANCEL_SELECTION)) {
-                    creatorFrame.setVisible(false);
-                    SwingUtilities.updateComponentTreeUI(MainFrame.frame);
+            });
+
+            includeTextures.addActionListener(e -> FilesUtilities.getConfig.saveCreatorOptions(createAsZip.isSelected(), includeTextures.isSelected(), includeShaders.isSelected(), unzipDebug.isSelected()));
+
+            includeShaders.addActionListener(e -> FilesUtilities.getConfig.saveCreatorOptions(createAsZip.isSelected(), includeTextures.isSelected(), includeShaders.isSelected(), unzipDebug.isSelected()));
+
+            unzipDebug.addActionListener(e -> FilesUtilities.getConfig.saveCreatorOptions(createAsZip.isSelected(), includeTextures.isSelected(), includeShaders.isSelected(), unzipDebug.isSelected()));
+
+            chooser.addActionListener(e -> {
+                if (e.getActionCommand().contains("Approve")) {
+                    if (!chooser.getSelectedFile().equals(mcFolder)) {
+                        mcFolder = chooser.getSelectedFile();
+                        utils.setDebug(utils.rgbColor("Changed minecraft directory to: " + FilesUtilities.getPath(mcFolder), 120, 200, 155), true);
+                        FilesUtilities.getConfig.saveMinecraftDir();
+                    } else {
+                        utils.setDebug(utils.rgbColor("Same minecraft directory selected, nothing changed", 110, 150, 150), false);
+                    }
+                } else {
+                    if (e.getActionCommand().equals(JFileChooser.CANCEL_SELECTION)) {
+                        creatorFrame.setVisible(false);
+                        SwingUtilities.updateComponentTreeUI(MainFrame.frame);
+                    }
                 }
-            }
-        });
+            });
 
-        createModPack.addActionListener(e -> {
-            String urlDir;
+            createModPack.addActionListener(e -> {
+                String urlDir;
 
-            if (!url.getText().contains("http://") && !url.getText().contains("https://")) {
-                urlDir = "http://" + url.getText();
-            } else {
-                urlDir = url.getText();
-            }
+                if (!url.getText().contains("http://") && !url.getText().contains("https://")) {
+                    urlDir = "http://" + url.getText();
+                } else {
+                    urlDir = url.getText();
+                }
 
-            try {
-                utils.setupCreator(urlDir, name.getText(), createAsZip.isSelected(), includeShaders.isSelected(), includeTextures.isSelected());
-                Thread creator = new Thread(utils, "Creating");
-                creator.start();
-            } catch (Throwable ex) {
-                utils.log(ex);
-                utils.setDebug(utils.rgbColor("Error while creating modpack", 220, 100, 100), true);
-            }
-        });
+                if (urlDir.endsWith("/")) {
+                    urlDir = urlDir.substring(0, urlDir.length() - 1);
+                }
 
-        openDownloadDir.addActionListener(e -> {
-            Modpack modpack = new Modpack(name.getText());
+                Object loaderVersion = version.getSelectedItem();
 
-            if (modpack.exists()) {
                 try {
-                    Desktop.getDesktop().open(FilesUtilities.getModpackUploadDir(modpack));
+                    assert loaderVersion != null;
+                    utils.setupCreator(urlDir, name.getText(), loaderVersion.toString(), createAsZip.isSelected(), includeShaders.isSelected(), includeTextures.isSelected(), unzipDebug.isSelected());
+                    Thread creator = new Thread(utils, "Creating");
+                    creator.start();
                 } catch (Throwable ex) {
                     utils.log(ex);
+                    utils.setDebug(utils.rgbColor("Error while creating modpack", 220, 100, 100), true);
                 }
-            } else {
-                utils.setDebug(utils.rgbColor("Create the modpack before opening modpack uploads folder!", 220, 100, 100), true);
-            }
-        });
+            });
 
-        url.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveCreatorURL(url.getText());
+            openDownloadDir.addActionListener(e -> {
+                Modpack modpack = new Modpack(name.getText());
+
+                if (modpack.exists()) {
+                    try {
+                        Desktop.getDesktop().open(FilesUtilities.getModpackUploadDir(modpack));
+                    } catch (Throwable ex) {
+                        utils.log(ex);
+                    }
+                } else {
+                    utils.setDebug(utils.rgbColor("Create the modpack before opening modpack uploads folder!", 220, 100, 100), true);
+                }
+            });
+
+            url.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    FilesUtilities.getConfig.saveCreatorURL(url.getText());
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    FilesUtilities.getConfig.saveCreatorURL(url.getText());
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    FilesUtilities.getConfig.saveCreatorURL(url.getText());
+                }
+            });
+
+            name.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    FilesUtilities.getConfig.saveCreatorName(name.getText());
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    FilesUtilities.getConfig.saveCreatorName(name.getText());
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    FilesUtilities.getConfig.saveCreatorName(name.getText());
+                }
+            });
+        } else {
+            JFrame errorFrame = new JFrame();
+            errorFrame.setPreferredSize(new Dimension(500, 100));
+
+            try {
+                errorFrame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
 
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveCreatorURL(url.getText());
-            }
+            JPanel infoPanel = new JPanel();
+            JLabel error = new JLabel();
+            error.setText("<html>No forge/fabric version detected,<br>please install a forge or fabric<br>version before using the modpack creator</html>");
 
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveCreatorURL(url.getText());
-            }
-        });
+            infoPanel.add(error);
 
-        name.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveCreatorName(name.getText());
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveCreatorName(name.getText());
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveCreatorName(name.getText());
-            }
-        });
+            errorFrame.setTitle("Something went wrong...");
+            errorFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            errorFrame.pack();
+            Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
+            errorFrame.setLocation(dim.width / 2 - errorFrame.getSize().width / 2, dim.height / 2 - errorFrame.getSize().height / 2);
+            errorFrame.setResizable(false);
+            errorFrame.add(infoPanel);
+            errorFrame.setVisible(true);
+        }
     }
 
     private void disableResize(JSplitPane... panes) {
         for (JSplitPane pane : panes) {
             pane.setEnabled(false);
+        }
+    }
+}
+
+class ListVersions {
+
+
+    public interface listing {
+        static String[] versions() {
+            File vFolder = new File(FilesUtilities.getMinecraftDir() + "/versions");
+            File[] versions = vFolder.listFiles();
+            ArrayList<String> names = new ArrayList<>();
+            if (versions != null && !Arrays.asList(versions).isEmpty()) {
+                for (File version : versions) {
+                    String name = version.getName();
+                    if (name.contains("forge") || name.contains("fabric")) {
+                        names.add(name);
+                    }
+                }
+            }
+
+            String[] versionNames = new String[names.size()];
+            for (int i = 0; i < versionNames.length; i++) {
+                versionNames[i] = names.get(i);
+            }
+
+            return versionNames;
         }
     }
 }

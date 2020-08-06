@@ -5,6 +5,7 @@ import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Unzip;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.*;
@@ -12,6 +13,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -21,9 +23,12 @@ public final class Downloader implements Runnable {
 
     private static String url;
     private final static ArrayList<String> mods = new ArrayList<>();
+    private final static ArrayList<String> versions = new ArrayList<>();
     private final static HashMap<String, URL> names = new HashMap<>();
 
+    private static boolean zipVersion = false;
     private static boolean isZip = false;
+
     private static URL zipURL;
     private static Modpack modpack;
 
@@ -31,6 +36,7 @@ public final class Downloader implements Runnable {
     public Downloader(String url) {
         Downloader.url = url;
         modpack = new Modpack(utils.getModpackName(url));
+        versions.clear();
     }
 
     @lombok.SneakyThrows
@@ -50,7 +56,7 @@ public final class Downloader implements Runnable {
             hasShaderpacks = file.getBoolean("SHADERS", false);
 
             HashMap<String, String> urlData = new HashMap<>();
-            if (file.getString("URL", "").isEmpty()) {
+            if (!file.getList("URLS").isEmpty()) {
                 List<Object> urls = file.getList("URLS");
 
                 for (Object obj : urls) {
@@ -70,7 +76,26 @@ public final class Downloader implements Runnable {
                 isZip = true;
             }
 
-            utils.setDebug((utils.rgbColor(urlData, 155, 240, 175, 120, 225, 255)), false);
+            if (!file.getList("V_URLS").isEmpty()) {
+                zipVersion = false;
+                List<Object> versionURLs= file.getList("V_URLS");
+
+                for (Object obj : versionURLs) {
+                    if (obj.toString().contains("=")) {
+                        String mURL = obj.toString().split("=")[0];
+                        String mName = obj.toString().replace(mURL + "=", "");
+
+                        versions.add(mName);
+                        names.put(mName, new URL(mURL));
+
+                        urlData.put("Detected version download url " + url, "Version info: " + file.getString("VERSION", "NULL"));
+                    }
+                }
+            } else {
+                zipVersion = true;
+            }
+
+            utils.setDebug((utils.rgbColor(urlData, 155, 240, 175, 120, 225, 255)), true);
 
             moveMods();
             if (hasTexturepacks) {
@@ -88,33 +113,62 @@ public final class Downloader implements Runnable {
 
         if (!isZip) {
             int totalDownloads = 0;
+            int modAmount = 0;
+            int versionAmount = 0;
+            int unknown = 0;
             int success = 0;
             int error = 0;
-            for (String mod : mods) {
-                URL url = names.get(mod);
+            for (String name : names.keySet()) {
+                URL url = names.get(name);
                 totalDownloads++;
                 try {
                     int count;
                     try {
-                        URLConnection conection = url.openConnection();
-                        conection.connect();
+                        URLConnection connection = url.openConnection();
+                        connection.connect();
 
-                        int lengthOfFile = conection.getContentLength();
+                        int lengthOfFile = connection.getContentLength();
 
-                        File destMod = new File(FilesUtilities.getModpackMods(modpack), mod);
+                        File destination;
+                        if (mods.contains(name)) {
+                            destination = new File(FilesUtilities.getModpackMods(modpack), name);
+                            modAmount++;
+                        } else {
+                            if (versions.contains(name)) {
+                                destination = new File(FilesUtilities.getModpackDownloadDir(modpack) + "/versions/" + name);
+                                versionAmount++;
+                            } else {
+                                destination = new File(FilesUtilities.getModpackDownloadDir(modpack) + "/unknown/" + name);
+                                unknown++;
+                            }
+                        }
+
+                        File destFolder = new File(FilesUtilities.getPath(destination).replace("/" + name, ""));
+
+                        if (!destFolder.exists() && destFolder.mkdirs()) {
+                            System.out.println("Executed");
+                        }
 
                         InputStream input = new BufferedInputStream(url.openStream(), 8192);
-                        OutputStream output = new FileOutputStream(destMod);
+                        OutputStream output = new FileOutputStream(destination);
 
                         byte[] data = new byte[1024];
 
                         long percentage = 0;
                         while ((count = input.read(data)) != -1) {
-                            long total = destMod.length();
+                            long total = destination.length();
                             if (percentage != total * 100 / lengthOfFile) {
                                 percentage = total * 100 / lengthOfFile;
                                 if (percentage < 98) {
-                                    utils.setProgress("Downloading mod " + mod, (int) percentage);
+                                    if (mods.contains(name)) {
+                                        utils.setProgress("Downloading mod " + name, (int) percentage);
+                                    } else {
+                                        if (versions.contains(name)) {
+                                            utils.setProgress("Downloading version " + name, (int) percentage);
+                                        } else {
+                                            utils.setProgress("Downloading non-defined file " + name + "<span style=\"color: rgb(220, 100, 100)\">COULD CONTAIN MALWARE</span>", (int) percentage);
+                                        }
+                                    }
                                 }
                             }
 
@@ -128,28 +182,37 @@ public final class Downloader implements Runnable {
                         utils.log(e);
                     }
                     success++;
-                    green.add("Downloaded mod " + mod);
+                    green.add("Downloaded file " + name);
                 } catch (Throwable e) {
                     error++;
-                    red.add("Failed to download mod " + mod);
+                    red.add("Failed to download file " + name);
                 } finally {
-                    utils.setProgress("Download status bar", 1);
-                    moveContentsToMinecraft("mods");
+                    if (totalDownloads == names.keySet().size()) {
+                        utils.setProgress("Download status bar", 1);
+
+                        utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
+                        utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
+
+                        utils.setDebug(utils.rgbColor("Tried to download a total of " + totalDownloads + " files [ {mod} mods, {version} version files, {unknown} unknown files ] <span style=\" color: green;\">".replace("{mod}", String.valueOf(modAmount)).replace("{version}", String.valueOf(versionAmount)).replace("{unknown}", String.valueOf(unknown)) + success + "</span> were success and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
+
+                        moveContentsToMinecraft("mods");
+                    }
                 }
+            }
 
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
-
-                utils.setDebug(utils.rgbColor("Tried to download a total of " + totalDownloads + " mods <span style=\" color: green;\">" + success + "</span> were success and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            if (modpack.hasVersion()) {
+                modpack.installVersion();
             }
         } else {
+            utils.setDebug(utils.rgbColor("Started the download of modpack.zip from " + zipURL, 120, 200, 155), true);
+
             URL url = zipURL;
             int count;
             try {
-                URLConnection conection = url.openConnection();
-                conection.connect();
+                URLConnection connection = url.openConnection();
+                connection.connect();
 
-                int lengthOfFile = conection.getContentLength();
+                int lengthOfFile = connection.getContentLength();
 
                 File destDir = new File(FilesUtilities.getModpackDownloadDir(modpack), "modpack.zip");
                 InputStream input = new BufferedInputStream(url.openStream(), 8192);
@@ -178,7 +241,7 @@ public final class Downloader implements Runnable {
             } catch (Throwable e) {
                 utils.log(e);
             } finally {
-                utils.setDebug(utils.rgbColor("Downloaded modpack.zip", 120, 200, 155), false);
+                utils.setDebug(utils.rgbColor("Downloaded modpack.zip", 120, 200, 155), true);
 
                 try {
                     Unzip unzip = new Unzip(new File(FilesUtilities.getModpackDownloadDir(modpack), "modpack.zip"),
@@ -191,6 +254,7 @@ public final class Downloader implements Runnable {
                     boolean finalHasShaderpacks = hasShaderpacks;
                     boolean finalHasTexturepacks = hasTexturepacks;
                     installTimer.schedule(new TimerTask() {
+                        @SneakyThrows
                         @Override
                         public void run() {
                             if (unzip.isEnded()) {
@@ -202,6 +266,75 @@ public final class Downloader implements Runnable {
                                 if (finalHasTexturepacks) {
                                     moveContentsToMinecraft("resourcepacks");
                                 }
+                                if (modpack.hasVersion()) {
+                                    if (zipVersion) {
+                                        modpack.installVersion();
+                                    } else {
+                                        int totalDownloads = 0;
+                                        int success = 0;
+                                        int error = 0;
+                                        for (String ver : versions) {
+                                            URL url = names.get(ver);
+                                            totalDownloads++;
+                                            try {
+                                                int count;
+                                                try {
+                                                    URLConnection conection = url.openConnection();
+                                                    conection.connect();
+
+                                                    int lengthOfFile = conection.getContentLength();
+
+                                                    File versionFolder = new File(FilesUtilities.getModpackDownloadDir(modpack) + "/versions/");
+                                                    if (!versionFolder.exists()) {
+                                                        if (versionFolder.mkdirs()) {
+                                                            System.out.println("Executed");
+                                                        }
+                                                    }
+
+                                                    File destVer = new File(FilesUtilities.getModpackDownloadDir(modpack) + "/versions/", ver);
+
+                                                    InputStream input = new BufferedInputStream(url.openStream(), 8192);
+                                                    OutputStream output = new FileOutputStream(destVer);
+
+                                                    byte[] data = new byte[1024];
+
+                                                    long percentage = 0;
+                                                    while ((count = input.read(data)) != -1) {
+                                                        long total = destVer.length();
+                                                        if (percentage != total * 100 / lengthOfFile) {
+                                                            percentage = total * 100 / lengthOfFile;
+                                                            if (percentage < 98) {
+                                                                utils.setProgress("Downloading version file " + ver, (int) percentage);
+                                                            }
+                                                        }
+
+                                                        output.write(data, 0, count);
+                                                    }
+
+                                                    output.flush();
+                                                    output.close();
+                                                    input.close();
+                                                } catch (Exception e) {
+                                                    utils.log(e);
+                                                }
+                                                success++;
+                                                green.add("Downloaded version file " + ver);
+                                            } catch (Throwable e) {
+                                                error++;
+                                                red.add("Failed to download version file " + ver);
+                                            } finally {
+                                                utils.setProgress("Download status bar", 1);
+
+                                                modpack.installVersion();
+                                            }
+
+                                            utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
+                                            utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
+
+                                            utils.setDebug(utils.rgbColor("Tried to download a total of " + totalDownloads + " files <span style=\" color: green;\">" + success + "</span> were success and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }, 0, TimeUnit.SECONDS.toMillis(1));
@@ -209,6 +342,15 @@ public final class Downloader implements Runnable {
                     utils.log(e);
                 }
             }
+        }
+    }
+
+    private boolean copy(File file, File directory) {
+        try {
+            FileUtils.copyFileToDirectory(file, directory);
+            return true;
+        } catch (Throwable e) {
+            return false;
         }
     }
 
@@ -230,9 +372,8 @@ public final class Downloader implements Runnable {
             int error = 0;
             for (File file : files) {
                 total++;
-                File destFile = new File(destDir, file.getName());
 
-                if (file.renameTo(destFile)) {
+                if (copy(file, destDir)) {
                     success++;
                     green.add("Moved file " + file.getName() + " to " + FilesUtilities.getPath(destDir));
                 } else {
@@ -242,21 +383,21 @@ public final class Downloader implements Runnable {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " files <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " files <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         } else {
-            utils.setDebug(utils.rgbColor("Something was wrong with directory: " + FilesUtilities.getModpackDownloadDir(modpack) + "/" + folder, 220, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Something was wrong with directory: " + FilesUtilities.getModpackDownloadDir(modpack) + "/" + folder, 220, 100, 100), true);
         }
     }
 
     @SneakyThrows
     private void moveMods() {
         {
-            utils.setDebug(utils.rgbColor("Cleaning modpack mods folder...", 155, 240, 175), false);
+            utils.setDebug(utils.rgbColor("Cleaning modpack mods folder...", 155, 240, 175), true);
             File[] mods = FilesUtilities.getModpackMods(modpack).listFiles();
             if (mods != null && !Arrays.asList(mods).isEmpty()) {
                 ArrayList<String> green = new ArrayList<>();
@@ -279,12 +420,12 @@ public final class Downloader implements Runnable {
                 }
 
                 if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
                 }
                 if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
                 }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
             }
         }
         utils.setDebug(utils.rgbColor("Cleaning minecraft mods folder...", 155, 240, 175), false);
@@ -310,19 +451,19 @@ public final class Downloader implements Runnable {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
     @SneakyThrows
     private void renameTextures() {
         {
-            utils.setDebug(utils.rgbColor("Cleaning modpack updater resourcepacks folder...", 155, 240, 175), false);
+            utils.setDebug(utils.rgbColor("Cleaning modpack updater resourcepacks folder...", 155, 240, 175), true);
             File[] texturepacks = FilesUtilities.getModpackTextures(modpack).listFiles();
             if (texturepacks != null && !Arrays.asList(texturepacks).isEmpty()) {
                 ArrayList<String> green = new ArrayList<>();
@@ -345,15 +486,15 @@ public final class Downloader implements Runnable {
                 }
 
                 if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
                 }
                 if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
                 }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
             }
         }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft resourcepacks folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft resourcepacks folder...", 155, 240, 175), true);
         File[] texturepacks = new File(FilesUtilities.getMinecraftDir() + "/resourcepacks").listFiles();
         if (texturepacks != null && !Arrays.asList(texturepacks).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -376,19 +517,19 @@ public final class Downloader implements Runnable {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " resourcepacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 
     @SneakyThrows
     private void renameShaders() {
         {
-            utils.setDebug(utils.rgbColor("Cleaning modpack updater shaderpacks folder...", 155, 240, 175), false);
+            utils.setDebug(utils.rgbColor("Cleaning modpack updater shaderpacks folder...", 155, 240, 175), true);
             File[] shaderpacks = FilesUtilities.getModpackShaders(modpack).listFiles();
             if (shaderpacks != null && !Arrays.asList(shaderpacks).isEmpty()) {
                 ArrayList<String> green = new ArrayList<>();
@@ -411,15 +552,15 @@ public final class Downloader implements Runnable {
                 }
 
                 if (!green.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                    utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
                 }
                 if (!red.isEmpty()) {
-                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                    utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
                 }
-                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+                utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
             }
         }
-        utils.setDebug(utils.rgbColor("Cleaning minecraft shaderpacks folder...", 155, 240, 175), false);
+        utils.setDebug(utils.rgbColor("Cleaning minecraft shaderpacks folder...", 155, 240, 175), true);
         File[] shaderpacks = new File(FilesUtilities.getMinecraftDir() + "/shaderpacks").listFiles();
         if (shaderpacks != null && !Arrays.asList(shaderpacks).isEmpty()) {
             ArrayList<String> green = new ArrayList<>();
@@ -442,12 +583,12 @@ public final class Downloader implements Runnable {
             }
 
             if (!green.isEmpty()) {
-                utils.setDebug(utils.rgbColor(green, 155, 240, 175), false);
+                utils.setDebug(utils.rgbColor(green, 155, 240, 175), true);
             }
             if (!red.isEmpty()) {
-                utils.setDebug(utils.rgbColor(red, 220, 100, 100), false);
+                utils.setDebug(utils.rgbColor(red, 220, 100, 100), green.isEmpty());
             }
-            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), false);
+            utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " shaderpacks <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
 

@@ -31,7 +31,7 @@ public final class Checker {
      */
     @SneakyThrows
     public Checker(String realVersion) {
-        if (realVersion == null || realVersion.isEmpty()) realVersion = MainFrame.version;
+        if (realVersion == null || realVersion.isEmpty()) realVersion = "0";
         version_now_str = realVersion;
         version_now_int = Integer.parseInt(version_now_str.replaceAll("[^a-zA-Z0-9]", "").replaceAll("[aA-zZ]", ""));
 
@@ -104,9 +104,7 @@ public final class Checker {
                     update.dispatchEvent(new WindowEvent(update, WindowEvent.WINDOW_CLOSING));
                 });
 
-                ignoreButton.addActionListener(e -> {
-                    update.dispatchEvent(new WindowEvent(update, WindowEvent.WINDOW_CLOSING));
-                });
+                ignoreButton.addActionListener(e -> update.dispatchEvent(new WindowEvent(update, WindowEvent.WINDOW_CLOSING)));
             } else {
                 JTextArea url = new JTextArea();
                 downloadPanel.add(url);

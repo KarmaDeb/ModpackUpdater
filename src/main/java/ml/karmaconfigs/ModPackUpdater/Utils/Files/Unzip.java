@@ -13,16 +13,16 @@ public final class Unzip implements Runnable {
     private final File zipDir;
     private final File destDir;
 
-    private boolean ended = false;
+    private final boolean debug;
 
-    private final boolean debugging;
+    private boolean ended = false;
 
     private final static Utils utils = new Utils();
 
     public Unzip(File zip, File dest, boolean debugging) {
         zipDir = zip;
         destDir = dest;
-        this.debugging = debugging;
+        debug = debugging;
     }
 
     private int getContents() throws Throwable {
@@ -55,17 +55,18 @@ public final class Unzip implements Runnable {
                 files.add(file);
 
                 if (file.toPath().normalize().startsWith(destDir.toPath())) {
+                    unzipped++;
                     if (entry.isDirectory()) {
                         if (file.mkdirs()) {
-                            utils.setDebug(utils.rgbColor("Unzipping folder " + entry.getName() + " to " + FilesUtilities.getPath(file), 125, 255, 195), false);
+                            utils.setDebug(utils.rgbColor("Unzipping folder " + entry.getName() + " to " + FilesUtilities.getPath(file), 125, 255, 195), unzipped == 1);
                         }
                     } else {
-                        utils.setDebug(utils.rgbColor("Unzipping file " + entry.getName() + " to " + FilesUtilities.getPath(file), 125, 255, 195), false);
+                        utils.setDebug(utils.rgbColor("Unzipping file " + entry.getName() + " to " + FilesUtilities.getPath(file), 125, 255, 195), unzipped == 1);
                     }
 
                     byte[] buffer = new byte[2048];
                     if (file.getParentFile().mkdirs()) {
-                        utils.setDebug(utils.rgbColor("Unzipped folder " + FilesUtilities.getPath(file), 125, 255, 195), false);
+                        System.out.println("Executed");
                     }
 
                     BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file));
@@ -75,7 +76,6 @@ public final class Unzip implements Runnable {
                         out.write(buffer, 0, count);
                     }
                     out.close();
-                    unzipped++;
                 }
 
                 int percentage = unzipped * 100 / amount;
@@ -86,7 +86,7 @@ public final class Unzip implements Runnable {
         } finally {
             utils.setProgress("Download bar status", 1);
 
-            if (debugging) {
+            if (debug) {
                 int amount = files.size();
                 for (File file : files) {
                     try {

@@ -14,31 +14,21 @@ import java.util.zip.ZipOutputStream;
 
 public final class CopyFile implements Runnable {
 
-    private static File file;
+    private static File file, version;
     private static Modpack modpack;
     private static boolean textures, shaders;
 
+    private final boolean debug;
+
     private final Utils utils = new Utils();
 
-    public CopyFile(File file, Modpack modpack, boolean textures, boolean shaders) {
+    public CopyFile(File file, File loaderVersion, Modpack modpack, boolean textures, boolean shaders, boolean debug) {
         CopyFile.file = file;
+        CopyFile.version = loaderVersion;
         CopyFile.modpack = modpack;
         CopyFile.textures = textures;
         CopyFile.shaders = shaders;
-    }
-
-    public void copy(Modpack modpack, String target) {
-        File inFolder = new File(FilesUtilities.getModpackUploadDir(modpack) + "/" + target + "/");
-        try {
-            if (!inFolder.exists()) {
-                if (inFolder.mkdirs()) {
-                    utils.setDebug(utils.rgbColor("Created in-updater mods folder for zipping", 255, 100, 100), true);
-                }
-            }
-            FileUtils.copyFileToDirectory(file, inFolder);
-        } catch (Throwable e) {
-            utils.log(e);
-        }
+        this.debug = debug;
     }
 
     @SneakyThrows
@@ -48,10 +38,16 @@ public final class CopyFile implements Runnable {
         File srcMods = new File(FilesUtilities.getModpackUploadDir(modpack), "/mods");
         File srcTextures = new File(FilesUtilities.getModpackUploadDir(modpack), "/resourcepacks");
         File srcShaders = new File(FilesUtilities.getModpackUploadDir(modpack), "/shaderpacks");
+        boolean hasVersion = version != null;
+        File srcVersions = null;
+        if (hasVersion) {
+            srcVersions = new File(FilesUtilities.getModpackUploadDir(modpack), "/versions");
+        }
 
         int modsAmount = 0;
         int texturesAmount = 0;
         int shadersAmount = 0;
+        int versionsAmount = 0;
 
         if (srcMods.listFiles() != null) {
             modsAmount = srcMods.listFiles().length;
@@ -62,9 +58,13 @@ public final class CopyFile implements Runnable {
         if (srcShaders.listFiles() != null) {
             shadersAmount = srcShaders.listFiles().length;
         }
+        if (hasVersion) {
+            if (srcVersions.listFiles() != null) {
+                versionsAmount = srcVersions.listFiles().length;
+            }
+        }
 
-
-        int totalAmount = modsAmount + texturesAmount + shadersAmount;
+        int totalAmount = modsAmount + texturesAmount + shadersAmount + versionsAmount;
         int zippedAmount = 0;
 
         try {
@@ -79,7 +79,7 @@ public final class CopyFile implements Runnable {
                     int len;
                     try (FileInputStream in = new FileInputStream(fileName)) {
                         String name = fileName.getName();
-                        utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), false);
+                        utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), zippedAmount == 1);
                         zip.putNextEntry(new ZipEntry("mods/" + name));
                         while ((len = in.read(buf)) > 0) {
                             zip.write(buf, 0, len);
@@ -99,7 +99,7 @@ public final class CopyFile implements Runnable {
                         int len;
                         try (FileInputStream in = new FileInputStream(fileName)) {
                             String name = fileName.getName();
-                            utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), false);
+                            utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), zippedAmount == 1);
                             zip.putNextEntry(new ZipEntry("resourcepacks/" + name));
                             while ((len = in.read(buf)) > 0) {
                                 zip.write(buf, 0, len);
@@ -120,8 +120,29 @@ public final class CopyFile implements Runnable {
                         int len;
                         try (FileInputStream in = new FileInputStream(fileName)) {
                             String name = fileName.getName();
-                            utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), false);
+                            utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), zippedAmount == 1);
                             zip.putNextEntry(new ZipEntry("shaderpacks/" + name));
+                            while ((len = in.read(buf)) > 0) {
+                                zip.write(buf, 0, len);
+                            }
+                        }
+
+                        int percentage = zippedAmount * 100 / totalAmount;
+                        utils.setProgress("Zipping files...", percentage);
+                    }
+                }
+            }
+            if (hasVersion) {
+                File[] versionData = version.listFiles();
+                if (versionData != null) {
+                    for (File fileName : versionData) {
+                        zippedAmount++;
+                        byte[] buf = new byte[1024];
+                        int len;
+                        try (FileInputStream in = new FileInputStream(fileName)) {
+                            String name = fileName.getName();
+                            utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), zippedAmount == 1);
+                            zip.putNextEntry(new ZipEntry("versions/" + name));
                             while ((len = in.read(buf)) > 0) {
                                 zip.write(buf, 0, len);
                             }
@@ -139,12 +160,15 @@ public final class CopyFile implements Runnable {
         } finally {
             utils.setProgress("Download bar status", 1);
             utils.setDebug(utils.rgbColor("Modpack zipped, click on \"Open modpack files dir\" to get the download files you have to put in your host", 155, 240, 175), true);
-            utils.setDebug(utils.rgbColor("Performing an unzip debug...", 155, 240, 175), true);
+            if (debug) {
+                utils.setDebug(utils.rgbColor("Performing an unzip debug...", 155, 240, 175), true);
 
-            Unzip unzip = new Unzip(new File(FilesUtilities.getModpackUploadDir(modpack), "modpack.zip"),
-                    FilesUtilities.getModpackDownloadDir(modpack), true);
-            Thread thread = new Thread(unzip, "Unzipping");
-            thread.start();
+                Unzip unzip = new Unzip(new File(FilesUtilities.getModpackUploadDir(modpack), "modpack.zip"),
+                        FilesUtilities.getModpackDownloadDir(modpack), true);
+
+                Thread thread = new Thread(unzip, "Unzipping");
+                thread.start();
+            }
         }
     }
 }

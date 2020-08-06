@@ -154,6 +154,13 @@ public final class Config {
         write("DOWNLOAD_URL", url);
     }
 
+    public final void saveCreatorOptions(boolean asZip, boolean textures, boolean shaders, boolean debug) {
+        write("CREATOR_ZIP", String.valueOf(asZip));
+        write("CREATOR_TEXTURES", String.valueOf(textures));
+        write("CREATOR_SHADERS", String.valueOf(shaders));
+        write("CREATOR_DEBUG", String.valueOf(debug));
+    }
+
     public final String getTheme() {
         return get("THEME", "Light");
     }
@@ -174,5 +181,45 @@ public final class Config {
 
     public final String getDownloadURL() {
         return get("DOWNLOAD_URL", "Modpack download.txt url");
+    }
+
+    public final boolean createAsZip() {
+        String value = get("CREATOR_ZIP", "false");
+
+        if (value.equals("true") || value.equals("false")) {
+            return Boolean.parseBoolean(value);
+        } else {
+            return true;
+        }
+    }
+
+    public final boolean zipTextures() {
+        String value = get("CREATOR_TEXTURES", "false");
+
+        if (value.equals("true") || value.equals("false")) {
+            return Boolean.parseBoolean(value);
+        } else {
+            return false;
+        }
+    }
+
+    public final boolean zipShaders() {
+        String value = get("CREATOR_SHADERS", "false");
+
+        if (value.equals("true") || value.equals("false")) {
+            return Boolean.parseBoolean(value);
+        } else {
+            return false;
+        }
+    }
+
+    public final boolean zipDebug() {
+        String value = get("CREATOR_DEBUG", "false");
+
+        if (value.equals("true") || value.equals("false")) {
+            return Boolean.parseBoolean(value);
+        } else {
+            return true;
+        }
     }
 }

@@ -2,6 +2,9 @@ package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
 
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
+import ml.karmaconfigs.ModPackUpdater.Utils.Launcher.Profiler;
+import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
@@ -41,6 +44,73 @@ public final class Modpack {
      */
     public final String getDownloadURL() {
         return file.getString("DOWNLOAD", "Null url");
+    }
+
+    /**
+     * Get the modpack version name
+     *
+     * @return a string
+     */
+    public final String getVersionName() {
+        return file.getString("VERSION", "NULL");
+    }
+
+    private boolean copy(File file, File dest) {
+        try {
+            FileUtils.copyFileToDirectory(file, dest);
+            return true;
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    /**
+     * Install the modpack version
+     */
+    public final void installVersion() {
+        Utils utils = new Utils();
+        File[] versionFiles = new File(FilesUtilities.getModpackDownloadDir(this) + "/versions").listFiles();
+
+        File destDirVersion = new File(FilesUtilities.getMinecraftDir() + "/versions/" + getVersionName());
+        if (!destDirVersion.exists()) {
+            if (destDirVersion.mkdirs()) {
+                System.out.println("Executed");
+            }
+        }
+
+        if (versionFiles != null) {
+            int moved = 0;
+            for (File vFile : versionFiles) {
+                moved++;
+                File destDir = new File(FilesUtilities.getMinecraftDir() + "/versions/" + getVersionName());
+                File destFile = new File(FilesUtilities.getMinecraftDir() + "/versions/" + getVersionName() + "/" + vFile.getName());
+                if (destFile.exists()) {
+                    if (destFile.delete()) {
+                        utils.setDebug(utils.rgbColor("Removed old version file " + FilesUtilities.getPath(destFile), 155, 240, 175), moved == 1);
+                    }
+                }
+                if (copy(vFile, destDir)) {
+                    utils.setDebug(utils.rgbColor("Moved version file " + vFile.getName() + " to " + FilesUtilities.getPath(destDir), 155, 240, 175), moved == 1);
+                } else {
+                    utils.setDebug(utils.rgbColor("Failed to move version file " + vFile.getName() + " to " + FilesUtilities.getPath(destDir), 220, 100, 100), moved == 1);
+                }
+            }
+
+            Profiler new_profile = new Profiler(this);
+            new_profile.insert();
+        }
+    }
+
+    /**
+     * Check if the modpack has a version
+     *
+     * --- NOTE: This allows legacy modpack updater
+     * configs ---
+     *
+     * @return a boolean
+     */
+    public final boolean hasVersion() {
+        return !getVersionName().equals("NULL");
     }
 
     /**
