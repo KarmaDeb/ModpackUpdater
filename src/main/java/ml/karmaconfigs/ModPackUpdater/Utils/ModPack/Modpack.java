@@ -52,7 +52,16 @@ public final class Modpack {
      * @return a string
      */
     public final String getVersionName() {
-        return file.getString("VERSION", "NULL");
+        return file.getString("VERSION", "NULL_VERSION");
+    }
+
+    /**
+     * Get the real version
+     *
+     * @return a String
+     */
+    public final String getRealVersion() {
+        return file.getString("INHERIT", "NULL_VERSION");
     }
 
     private boolean copy(File file, File dest) {

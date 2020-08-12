@@ -13,7 +13,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -32,10 +31,10 @@ public final class Downloader implements Runnable {
     private static URL zipURL;
     private static Modpack modpack;
 
-    @SneakyThrows
-    public Downloader(String url) {
+    public Downloader(String url) throws Throwable {
         Downloader.url = url;
         modpack = new Modpack(utils.getModpackName(url));
+        utils.saveCurrentModpack(modpack);
         versions.clear();
     }
 
@@ -441,7 +440,7 @@ public final class Downloader implements Runnable {
                 if (isMod(mod)) {
                     total++;
                     if (mod.delete()) {
-                        green.add("Removed old mod " + mod.getName() + " from " + FilesUtilities.getMinecraftDir() + "/mods");
+                        green.add("Removed old mod " + mod.getName() + " from " + FilesUtilities.getPath(new File(FilesUtilities.getMinecraftDir())) + "/mods");
                         success++;
                     } else {
                         red.add("Failed to move mod " + mod.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is minecraft running?</span>");
@@ -507,7 +506,7 @@ public final class Downloader implements Runnable {
                 if (isZip(texturepack)) {
                     total++;
                     if (texturepack.delete()) {
-                        green.add("Removed old texturepack " + texturepack.getName() + " from " + FilesUtilities.getMinecraftDir() + "/resourcepacks");
+                        green.add("Removed old texturepack " + texturepack.getName() + " from " + FilesUtilities.getPath(new File(FilesUtilities.getMinecraftDir())) + "/resourcepacks");
                         success++;
                     } else {
                         red.add("Failed to remove old texturepack " + texturepack.getName() + " <span style=\"color rgb(100, 100, 255);\"> Is minecraft running?</span>");

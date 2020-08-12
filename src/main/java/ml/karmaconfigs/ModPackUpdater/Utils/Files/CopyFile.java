@@ -3,7 +3,6 @@ package ml.karmaconfigs.ModPackUpdater.Utils.Files;
 import lombok.SneakyThrows;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
-import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.FileInputStream;

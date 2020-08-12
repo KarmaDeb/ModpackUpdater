@@ -19,7 +19,6 @@ public final class Profiler {
 
     private final static String icon = "Crafting_Table";
     private final static String date = "1970-01-01T00:00:00.000Z";
-    private final static String type = "custom";
 
     private final static Utils utils = new Utils();
 
@@ -45,11 +44,11 @@ public final class Profiler {
      * Insert the modpack profile
      * into the launcher
      */
-    @SuppressWarnings("all")
     /*
     Dues this is using an old API, I have
     to supress old API usage warnings
      */
+    @SuppressWarnings("all")
     public final void insert() {
         try {
             utils.setDebug(utils.rgbColor("Trying to insert launcher profile for modpack " + modpack.getName(), 155, 240, 175), true);
@@ -59,7 +58,7 @@ public final class Profiler {
             newProfile.put("lastUsed", date);
             newProfile.put("lastVersionId", modpack.getVersionName());
             newProfile.put("name", modpack.getName());
-            newProfile.put("type", type);
+            newProfile.put("type", "modpack-updater_modpack");
 
             JSONObject original = getJSON(profileFile);
             JSONObject profiles;

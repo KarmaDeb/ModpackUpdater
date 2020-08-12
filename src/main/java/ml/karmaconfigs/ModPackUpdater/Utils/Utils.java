@@ -104,147 +104,191 @@ public final class Utils extends MainFrame implements Runnable {
         }
     }
 
+    public final void display(Process process) {
+        StringBuilder builder = new StringBuilder();
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append("<br>");
+            }
+
+            reader.close();
+        } catch (Throwable e) {
+            log(e);
+        }
+
+        setDebug(rgbColor(builder.toString(), 220, 100, 100), true);
+    }
+
+    public final void displayInfo(Process process) {
+        StringBuilder builder = new StringBuilder();
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append("<br>");
+            }
+
+            reader.close();
+        } catch (Throwable e) {
+            log(e);
+        }
+
+        setDebug(rgbColor(builder.toString(), 220, 100, 100), true);
+    }
+
     private static String baseURL = "";
     private static String name = "";
-    private static String version = "";
+    private static String version = "NULL_VERSION";
+    private static String inheritVersion = "NULL_VERSION";
     private static boolean asZip = false;
     private static boolean includeShaders = false;
     private static boolean includeTextures = false;
     private static boolean enableDebug = false;
 
-    public final void setupCreator(String baseUrl, String modpackName, String loaderVersion, boolean zip, boolean withShaders, boolean withTextures, boolean debug) {
+    public final void setupCreator(String baseUrl, String modpackName, String loaderVersion, String realVersion, boolean zip, boolean withShaders, boolean withTextures, boolean debug) {
         baseURL = baseUrl;
         name = modpackName;
         version = loaderVersion;
+        inheritVersion = realVersion;
         asZip = zip;
         includeShaders = withShaders;
         includeTextures = withTextures;
         enableDebug = debug;
     }
 
-    @SneakyThrows
     @Override
     public void run() {
-        Modpack modpack = new Modpack(name);
-        modpack.createFile();
-        if (!name.isEmpty()) {
-            modpack.getFile().write("NAME", name);
-        } else {
-            modpack.getFile().write("NAME", "Null name");
-        }
-        modpack.getFile().write("DOWNLOAD", baseURL + "/download.txt");
-        modpack.getFile().write("SHADERS", includeShaders);
-        modpack.getFile().write("TEXTURES", includeTextures);
-
-        delZip();
-        deleteInModFolder(modpack);
-
-        setDebug(rgbColor("Creating modpack download file...", 155, 240, 175), true);
-        File modsFolder = new File(mcFolder + "/mods");
-        if (modsFolder.exists()) {
-            File[] mods = modsFolder.listFiles();
-
-            ArrayList<String> urls = new ArrayList<>();
-            ArrayList<String> modNames = new ArrayList<>();
-            if (mods != null && !Arrays.asList(mods).isEmpty()) {
-                int modsAmount = 0;
-                for (File mod : mods) {
-                    if (Downloader.isMod(mod)) {
-                        modNames.add(mod.getName());
-                        modsAmount++;
-                        String url;
-
-                        File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/mods");
-                        if (!destDir.exists() && destDir.mkdirs()) {
-                            System.out.println("Executed");
-                        }
-                        FileUtils.copyFileToDirectory(mod, destDir);
-
-                        if (!asZip) {
-                            url = baseURL + "/download/" + mod.getName() + "=" + mod.getName();
-                            setDebug(rgbColor("Mod detected " + FilesUtilities.getPath(mod) + " ( <span style=\"color: rgb(95, 210, 210);\">" + url.split("=")[0] + "</span> )", 95, 140, 210), modsAmount == 1);
-                            urls.add(url);
-                        } else {
-                            setDebug(rgbColor("Mod detected " + FilesUtilities.getPath(mod) + " ( <span style=\"color: rgb(95, 210, 210);\"> Will be added to modpack.zip </span> )", 95, 140, 210), modsAmount == 1);
-                        }
-                    }
-                }
-
-                setDebug(rgbColor("Detected a total of " + modsAmount + " mods", 120, 200, 155), true);
-
-                if (includeTextures) {
-                    includeTextures = copyTexturePacks(modpack);
-                }
-                if (includeShaders) {
-                    includeShaders = copyShaderPacks(modpack);
-                }
-                File vFile = null;
-                if (version != null && !version.isEmpty() && new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).exists()) {
-                    vFile = new File(FilesUtilities.getMinecraftDir() + "/versions/" + version);
-                    FileUtils.copyDirectory(vFile, new File(FilesUtilities.getModpackUploadDir(modpack) + "/versions"));
-                }
-
-                if (asZip) {
-                    CopyFile copy = new CopyFile(null, vFile, modpack, includeTextures, includeShaders, enableDebug);
-                    Thread thread = new Thread(copy, "Zipping");
-                    thread.start();
-                }
-            } else {
-                throw new Exception("Mods folder is null or empty");
-            }
-
-            File dlFile = new File(FilesUtilities.getModpackUploadDir(modpack), "download.txt");
-
-            if (!dlFile.exists()) {
-                if (dlFile.createNewFile()) {
-                    setDebug(rgbColor("Created file " + dlFile.getName(), 120, 200, 155), true);
-                }
-            }
-
-            CustomFile file = new CustomFile(dlFile, true);
+        try {
+            Modpack modpack = new Modpack(name);
+            modpack.createFile();
             if (!name.isEmpty()) {
-                file.write("NAME", name);
+                modpack.getFile().write("NAME", name);
+            } else {
+                modpack.getFile().write("NAME", "Null name");
             }
-            file.write("DOWNLOAD", baseURL + "/download.txt");
-            file.write("SHADERS", includeShaders);
-            file.write("TEXTURES", includeTextures);
-            if (version != null && !version.isEmpty() && new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).exists()) {
-                file.write("VERSION", version);
-                if (!asZip) {
-                    File[] versionsFiles = new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).listFiles();
-                    ArrayList<String> vURLs = new ArrayList<>();
-                    if (versionsFiles != null) {
-                        for (File vFile : versionsFiles) {
-                            vURLs.add(baseURL + "/download/versions/" + vFile.getName() + "=" + vFile.getName());
+            modpack.getFile().write("DOWNLOAD", baseURL + "/download.txt");
+            modpack.getFile().write("SHADERS", includeShaders);
+            modpack.getFile().write("TEXTURES", includeTextures);
+            modpack.getFile().write("VERSION", version);
+            modpack.getFile().write("INHERIT", inheritVersion);
+
+            delZip();
+            deleteInModFolder(modpack);
+
+            setDebug(rgbColor("Creating modpack download file...", 155, 240, 175), true);
+            File modsFolder = new File(mcFolder + "/mods");
+            if (modsFolder.exists()) {
+                File[] mods = modsFolder.listFiles();
+
+                ArrayList<String> urls = new ArrayList<>();
+                ArrayList<String> modNames = new ArrayList<>();
+                if (mods != null && !Arrays.asList(mods).isEmpty()) {
+                    int modsAmount = 0;
+                    for (File mod : mods) {
+                        if (Downloader.isMod(mod)) {
+                            modNames.add(mod.getName());
+                            modsAmount++;
+                            String url;
+
+                            File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/mods");
+                            if (!destDir.exists() && destDir.mkdirs()) {
+                                System.out.println("Executed");
+                            }
+                            FileUtils.copyFileToDirectory(mod, destDir);
+
+                            if (!asZip) {
+                                url = baseURL + "/download/" + mod.getName() + "=" + mod.getName();
+                                setDebug(rgbColor("Mod detected " + FilesUtilities.getPath(mod) + " ( <span style=\"color: rgb(95, 210, 210);\">" + url.split("=")[0] + "</span> )", 95, 140, 210), modsAmount == 1);
+                                urls.add(url);
+                            } else {
+                                setDebug(rgbColor("Mod detected " + FilesUtilities.getPath(mod) + " ( <span style=\"color: rgb(95, 210, 210);\"> Will be added to modpack.zip </span> )", 95, 140, 210), modsAmount == 1);
+                            }
                         }
                     }
-                    file.write("V_URLS", vURLs);
+
+                    setDebug(rgbColor("Detected a total of " + modsAmount + " mods", 120, 200, 155), true);
+
+                    if (includeTextures) {
+                        includeTextures = copyTexturePacks(modpack);
+                    }
+                    if (includeShaders) {
+                        includeShaders = copyShaderPacks(modpack);
+                    }
+                    File vFile = null;
+                    if (version != null && !version.isEmpty() && new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).exists()) {
+                        vFile = new File(FilesUtilities.getMinecraftDir() + "/versions/" + version);
+                        FileUtils.copyDirectory(vFile, new File(FilesUtilities.getModpackUploadDir(modpack) + "/versions"));
+                    }
+
+                    if (asZip) {
+                        CopyFile copy = new CopyFile(null, vFile, modpack, includeTextures, includeShaders, enableDebug);
+                        Thread thread = new Thread(copy, "Zipping");
+                        thread.start();
+                    }
+                } else {
+                    throw new Exception("Mods folder is null or empty");
                 }
-            } else {
-                file.write("VERSION", "NULL");
-            }
-            if (!asZip) {
-                file.write("URLS", urls);
-                modpack.getFile().write("URLS", urls);
-            } else {
-                file.write("URL", baseURL + "/download/modpack.zip");
-                modpack.getFile().write("URL", baseURL + "/download/modpack.zip");
-            }
-            file.write("MODS", modNames);
-            modpack.getFile().write("MODS", modNames);
 
-            displayPackInfo(modpack);
-        } else {
-            setDebug(rgbColor("Couldn't find mods folder, is it the minecraft folder? ( <span style=\"color: rgb(100, 100, 255);\">" + FilesUtilities.getPath(mcFolder) + "</span> )", 120, 100, 100), true);
+                File dlFile = new File(FilesUtilities.getModpackUploadDir(modpack), "download.txt");
+
+                if (!dlFile.exists()) {
+                    if (dlFile.createNewFile()) {
+                        setDebug(rgbColor("Created file " + dlFile.getName(), 120, 200, 155), true);
+                    }
+                }
+
+                CustomFile file = new CustomFile(dlFile, true);
+                if (!name.isEmpty()) {
+                    file.write("NAME", name);
+                }
+                file.write("DOWNLOAD", baseURL + "/download.txt");
+                file.write("SHADERS", includeShaders);
+                file.write("TEXTURES", includeTextures);
+                if (version != null && !version.isEmpty() && new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).exists()) {
+                    file.write("VERSION", version);
+                    file.write("INHERIT", inheritVersion);
+                    if (!asZip) {
+                        File[] versionsFiles = new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).listFiles();
+                        ArrayList<String> vURLs = new ArrayList<>();
+                        if (versionsFiles != null) {
+                            for (File vFile : versionsFiles) {
+                                vURLs.add(baseURL + "/download/versions/" + vFile.getName() + "=" + vFile.getName());
+                            }
+                        }
+                        file.write("V_URLS", vURLs);
+                    }
+                } else {
+                    file.write("VERSION", "NULL");
+                }
+                if (!asZip) {
+                    file.write("URLS", urls);
+                    modpack.getFile().write("URLS", urls);
+                } else {
+                    file.write("URL", baseURL + "/download/modpack.zip");
+                    modpack.getFile().write("URL", baseURL + "/download/modpack.zip");
+                }
+                file.write("MODS", modNames);
+                modpack.getFile().write("MODS", modNames);
+
+                displayPackInfo(modpack);
+            } else {
+                setDebug(rgbColor("Couldn't find mods folder, is it the minecraft folder? ( <span style=\"color: rgb(100, 100, 255);\">" + FilesUtilities.getPath(mcFolder) + "</span> )", 120, 100, 100), true);
+            }
+
+            Dimension size = modpacks.getPreferredSize();
+            modpackLabel.remove(modpacks);
+            modpacks.removeAllItems();
+            modpacks = new JComboBox<>(Modpack.listing.modpacks());
+            modpacks.setPreferredSize(size);
+            modpackLabel.add(modpacks);
+            restartModpacksListeners();
+        } catch (Throwable e) {
+            log(e);
         }
-
-        Dimension size = modpacks.getPreferredSize();
-        modpackLabel.remove(modpacks);
-        modpacks.removeAllItems();
-        modpacks = new JComboBox<>(Modpack.listing.modpacks());
-        modpacks.setPreferredSize(size);
-        modpackLabel.add(modpacks);
-        restartModpacksListeners();
     }
 
     public final void setDebug(String newLine, boolean doubleLine) {
@@ -254,6 +298,7 @@ public final class Utils extends MainFrame implements Runnable {
         if (doubleLine) {
             separator = "<br><br>";
         }
+
         bPane.setText("<html>" + oldText + separator + newLine + "</html>");
         jsp.getVerticalScrollBar().setValue(jsp.getVerticalScrollBar().getMaximum());
     }
@@ -283,15 +328,22 @@ public final class Utils extends MainFrame implements Runnable {
             info.setPreferredSize(new Dimension(800, 800));
         }
 
-        JLabel name = new JLabel();
-        name.setHorizontalAlignment(SwingConstants.CENTER);
-        name.setText("<html><h2 style=\" color: rgb(65, 110, 225);\">" + modpack.getName() + "</h2></html>");
-        name.setPreferredSize(new Dimension(400, name.getHeight()));
+        JLabel nameAndVersion = new JLabel();
+        nameAndVersion.setHorizontalAlignment(SwingConstants.CENTER);
+        nameAndVersion.setText("<html><h2 style=\" color: rgb(65, 110, 225);\">" + modpack.getName() + " [ " + modpack.getVersionName() + " ]" + "</h2></html>");
+        nameAndVersion.setPreferredSize(new Dimension(400, nameAndVersion.getHeight()));
 
         JTextField download = new JTextField();
         download.setPreferredSize(new Dimension(50, download.getHeight()));
         download.setText(modpack.getDownloadURL());
         download.setEditable(false);
+
+        JCheckBox shaders = new JCheckBox("Shaders");
+        shaders.setEnabled(false);
+        shaders.setSelected(modpack.hasShaders());
+        JCheckBox textures = new JCheckBox("Resourcepacks");
+        textures.setEnabled(false);
+        textures.setSelected(modpack.hasTextures());
 
         infoScrollable = new JLabel();
         JScrollPane modList = new JScrollPane(infoScrollable);
@@ -311,9 +363,13 @@ public final class Utils extends MainFrame implements Runnable {
 
         infoScrollable.setText("<html>" + rgbColor(modNames, 100, 170, 245) + "</html>");
 
-        JSplitPane textualInfo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, name, download);
+        JSplitPane textualInfo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, nameAndVersion, download);
         textualInfo.setEnabled(false);
-        JSplitPane modInfo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, textualInfo, modList);
+        JSplitPane zipInfo = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, shaders, textures);
+        zipInfo.setEnabled(false);
+        JSplitPane finalInfo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, textualInfo, zipInfo);
+        finalInfo.setEnabled(false);
+        JSplitPane modInfo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, finalInfo, modList);
         modInfo.setEnabled(false);
 
         info.setTitle("Modpack \"" + modpack.getName() + "\" info");
@@ -361,6 +417,15 @@ public final class Utils extends MainFrame implements Runnable {
 
             }
         });
+    }
+
+    public final void saveCurrentModpack(Modpack modpack) {
+        File modpackInfo = new File(FilesUtilities.getUpdaterDir(), "modpack.info");
+
+        CustomFile file = new CustomFile(modpackInfo, true);
+
+        file.write("CURRENT", modpack.getName());
+        launchPack.setText("Launch modpack ( " + modpack.getName() + " )");
     }
 
     public final boolean isOutdated(String url) {
@@ -439,6 +504,22 @@ public final class Utils extends MainFrame implements Runnable {
         if (name.isEmpty()) name = "blank_" + blankPacks();
 
         return name;
+    }
+
+    /**
+     * Get the current modpack name
+     *
+     * @return a String
+     */
+    public final String getCurrentModpack() {
+        File modpackInfo = new File(FilesUtilities.getUpdaterDir(), "modpack.info");
+
+        if (modpackInfo.exists()) {
+            CustomFile file = new CustomFile(modpackInfo, false);
+
+            return file.getString("CURRENT", "");
+        }
+        return "";
     }
 
     private void deleteInModFolder(Modpack modpack) {
@@ -587,64 +668,72 @@ public final class Utils extends MainFrame implements Runnable {
 
     @SneakyThrows
     private boolean copyShaderPacks(Modpack modpack) {
-        deleteInShaderFolder(modpack);
-        setDebug(rgbColor("Looking for shaderpacks packs...", 155, 240, 175), true);
-        File shadersFolder = new File(mcFolder + "/shaderpacks");
-        if (shadersFolder.exists()) {
-            File[] shaderPacks = shadersFolder.listFiles();
-            if (shaderPacks != null && !Arrays.asList(shaderPacks).isEmpty()) {
-                HashMap<String, String> debugData = new HashMap<>();
-                int shadersAmount = 0;
-                for (File shaderpack : shaderPacks) {
-                    if (Downloader.isZip(shaderpack)) {
-                        shadersAmount++;
-                        File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/shaderpacks");
-                        if (!destDir.exists() && destDir.mkdirs()) {
-                            System.out.println("Executed");
+        try {
+            deleteInShaderFolder(modpack);
+            setDebug(rgbColor("Looking for shaderpacks packs...", 155, 240, 175), true);
+            File shadersFolder = new File(mcFolder + "/shaderpacks");
+            if (shadersFolder.exists()) {
+                File[] shaderPacks = shadersFolder.listFiles();
+                if (shaderPacks != null && !Arrays.asList(shaderPacks).isEmpty()) {
+                    HashMap<String, String> debugData = new HashMap<>();
+                    int shadersAmount = 0;
+                    for (File shaderpack : shaderPacks) {
+                        if (Downloader.isZip(shaderpack)) {
+                            shadersAmount++;
+                            File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/shaderpacks");
+                            if (!destDir.exists() && destDir.mkdirs()) {
+                                System.out.println("Executed");
+                            }
+                            FileUtils.copyFileToDirectory(shaderpack, destDir);
+                            debugData.put("Detected shaderpack " + FilesUtilities.getPath(shaderpack), "Shaderpack " + shaderpack.getName() + " have been added to modpack.zip");
                         }
-                        FileUtils.copyFileToDirectory(shaderpack, destDir);
-                        debugData.put("Detected shaderpack " + FilesUtilities.getPath(shaderpack), "Shaderpack " + shaderpack.getName() + " have been added to modpack.zip");
                     }
-                }
 
-                setDebug(rgbColor(debugData, 100, 100, 255, 155, 0, 155), true);
-                setDebug(rgbColor("Detected a total of " + shadersAmount + " shaderpacks", 120, 200, 155), true);
-                return true;
+                    setDebug(rgbColor(debugData, 100, 100, 255, 155, 0, 155), true);
+                    setDebug(rgbColor("Detected a total of " + shadersAmount + " shaderpacks", 120, 200, 155), true);
+                    return true;
+                }
+            } else {
+                setDebug(rgbColor("Couldn't find shaderpacks folder, is it the minecraft folder? ( <span style=\"color: rgb(100, 100, 255);\">" + FilesUtilities.getPath(mcFolder) + "</span> )", 120, 100, 100), true);
             }
-        } else {
-            setDebug(rgbColor("Couldn't find shaderpacks folder, is it the minecraft folder? ( <span style=\"color: rgb(100, 100, 255);\">" + FilesUtilities.getPath(mcFolder) + "</span> )", 120, 100, 100), true);
+        } catch (Throwable e) {
+            log(e);
         }
         return false;
     }
 
     @SneakyThrows
     private boolean copyTexturePacks(Modpack modpack) {
-        deleteInTextureFolder(modpack);
-        setDebug(rgbColor("Looking for texture packs...", 155, 240, 175), true);
-        File texturesFolder = new File(mcFolder + "/resourcepacks");
-        if (texturesFolder.exists()) {
-            File[] texturePacks = texturesFolder.listFiles();
-            if (texturePacks != null && !Arrays.asList(texturePacks).isEmpty()) {
-                HashMap<String, String> debugData = new HashMap<>();
-                int texturesAmount = 0;
-                for (File texturepack : texturePacks) {
-                    if (Downloader.isZip(texturepack)) {
-                        texturesAmount++;
-                        File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/resourcepacks");
-                        if (!destDir.exists() && destDir.mkdirs()) {
-                            System.out.println("Executed");
+        try {
+            deleteInTextureFolder(modpack);
+            setDebug(rgbColor("Looking for texture packs...", 155, 240, 175), true);
+            File texturesFolder = new File(mcFolder + "/resourcepacks");
+            if (texturesFolder.exists()) {
+                File[] texturePacks = texturesFolder.listFiles();
+                if (texturePacks != null && !Arrays.asList(texturePacks).isEmpty()) {
+                    HashMap<String, String> debugData = new HashMap<>();
+                    int texturesAmount = 0;
+                    for (File texturepack : texturePacks) {
+                        if (Downloader.isZip(texturepack)) {
+                            texturesAmount++;
+                            File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/resourcepacks");
+                            if (!destDir.exists() && destDir.mkdirs()) {
+                                System.out.println("Executed");
+                            }
+                            FileUtils.copyFileToDirectory(texturepack, destDir);
+                            debugData.put("Detected texturepack " + FilesUtilities.getPath(texturepack), "Texturepack " + texturepack.getName() + " have been added to modpack.zip");
                         }
-                        FileUtils.copyFileToDirectory(texturepack, destDir);
-                        debugData.put("Detected texturepack " + FilesUtilities.getPath(texturepack), "Texturepack " + texturepack.getName() + " have been added to modpack.zip");
                     }
-                }
 
-                setDebug(rgbColor(debugData, 100, 100, 255, 155, 0, 155), true);
-                setDebug(rgbColor("Detected a total of " + texturesAmount + " texturepacks", 120, 200, 155), true);
-                return true;
+                    setDebug(rgbColor(debugData, 100, 100, 255, 155, 0, 155), true);
+                    setDebug(rgbColor("Detected a total of " + texturesAmount + " texturepacks", 120, 200, 155), true);
+                    return true;
+                }
+            } else {
+                setDebug(rgbColor("Couldn't find texturepacks folder, is it the minecraft folder? ( <span style=\"color: rgb(100, 100, 255);\">" + FilesUtilities.getPath(mcFolder) + "</span> )", 120, 100, 100), true);
             }
-        } else {
-            setDebug(rgbColor("Couldn't find texturepacks folder, is it the minecraft folder? ( <span style=\"color: rgb(100, 100, 255);\">" + FilesUtilities.getPath(mcFolder) + "</span> )", 120, 100, 100), true);
+        } catch (Throwable e) {
+            log(e);
         }
         return false;
     }

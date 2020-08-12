@@ -4,11 +4,8 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.Launcher.Profiler;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Downloader;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Installer;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.ListMods;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
+import ml.karmaconfigs.ModPackUpdater.Utils.Launcher.Launch;
+import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.*;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
 import ml.karmaconfigs.ModPackUpdater.VersionChecker.Checker;
 
@@ -22,6 +19,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -31,6 +29,7 @@ import java.util.TimerTask;
 public class MainFrame {
 
     private static boolean shift = false;
+    private static JFrame cFrame;
 
     public static String version = MainFrame.class.getPackage().getImplementationVersion();
 
@@ -47,9 +46,15 @@ public class MainFrame {
 
     public static JProgressBar bar;
 
+    public static JButton launchPack;
+    public static JButton chooseFolder;
+
     private static JTextArea dlURL;
+    protected static JTextArea c_name;
+    protected static JTextArea c_mem;
 
     public static File mcFolder;
+    private File installFolder;
 
     /**
      * Initialize the launcher GUI
@@ -57,6 +62,7 @@ public class MainFrame {
     public void initFrame() {
         Utils utils = new Utils();
         mcFolder = FilesUtilities.getConfig.getMinecraftDir();
+        installFolder = FilesUtilities.getConfig.getDownloadDir();
         frame = new JFrame();
 
         try {
@@ -85,17 +91,25 @@ public class MainFrame {
         theme.setSelectedItem(FilesUtilities.getConfig.getTheme());
 
         //Check boxes
-        JCheckBox hardInstall = new JCheckBox("Hard install");
+        JCheckBox hardInstall = new JCheckBox("Force install/update");
+        JCheckBox checkUpdates = new JCheckBox("Version checker");
 
         //Text areas
+        c_name = new JTextArea("Player");
+        c_name.setText(FilesUtilities.getConfig.getClientName());
+        c_mem = new JTextArea("2048");
+        c_mem.setText(FilesUtilities.getConfig.getClientMemory());
         dlURL = new JTextArea("Modpack download.txt url");
         dlURL.setText(FilesUtilities.getConfig.getDownloadURL());
 
         //Buttons
-        JButton download = new JButton("[Download & Install] modpack");
+        JButton download = new JButton("Update modpack");
         JButton install = new JButton("Install modpack");
         JButton list = new JButton("List mods");
         JButton createPanel = new JButton("Creator panel");
+        launchPack = new JButton("Launch modpack ( " + utils.getCurrentModpack() + " )");
+        chooseFolder = new JButton("MC download folder");
+        JButton exportDebug = new JButton("Export debug");
 
         //Panels
         JPanel installPanel = new JPanel();
@@ -122,17 +136,26 @@ public class MainFrame {
         JSplitPane themeLabel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, themeText, theme);
         modpackLabel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, packText, modpacks);
 
-        JSplitPane managerSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, themePane, modpackPane);
-        JSplitPane optionSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, leftTop, managerSplitter);
+        JSplitPane managerSplitterOne = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, c_mem, c_name);
+        JSplitPane managerSpacer = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSplitterOne, new JPanel());
+        JSplitPane managerSplitterTwo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, themePane, modpackPane);
+        JSplitPane managerSplitterThree = new JSplitPane(JSplitPane.VERTICAL_SPLIT, launchPack, chooseFolder);
+        JSplitPane managerSplitterFour = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSplitterTwo, managerSplitterThree);
+        JSplitPane managerSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSpacer, managerSplitterFour);
+        JSplitPane optionOneSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, leftTop, managerSplitter);
+        JSplitPane optionTwoSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionOneSplitter, checkUpdates);
 
-        JSplitPane left = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionSplitter, new JPanel());
-        JSplitPane right = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dlURL, jsp);
+        JSplitPane exportUrl = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, dlURL, exportDebug);
+        exportUrl.setDividerLocation(700);
+
+        JSplitPane left = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionTwoSplitter, new JPanel());
+        JSplitPane right = new JSplitPane(JSplitPane.VERTICAL_SPLIT, exportUrl, jsp);
 
         JSplitPane barSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, bar, barSplitter);
 
         //Disable the split panes resizing...
-        disable(installSplit, options, manager, leftTop, themeLabel, modpackLabel, managerSplitter, optionSplitter, left, right, barSplitter, splitter);
+        disable(installSplit, options, manager, leftTop, themeLabel, modpackLabel, managerSpacer, managerSplitterOne, managerSplitterTwo, managerSplitterThree, managerSplitterFour, managerSplitter, optionOneSplitter, optionTwoSplitter, left, right, barSplitter, splitter);
 
         //Make all the panels work and display the correct way
         //Yes, I use brackets to separate it '-'
@@ -151,6 +174,12 @@ public class MainFrame {
                 managerSplitter.setDividerSize(-5);
             }
 
+            //JCheckBoxes options sync with config
+            {
+                checkUpdates.setSelected(FilesUtilities.getConfig.checkVersions());
+            }
+
+            //Sync the boxes size
             {
                 syncSize(installSplit, download, install, list, createPanel, theme, modpacks);
             }
@@ -180,6 +209,7 @@ public class MainFrame {
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
         frame.setVisible(true);
+        frame.setResizable(false);
         Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
         frame.setLocation(dim.width/2-frame.getSize().width/2, dim.height/2-frame.getSize().height/2);
         frame.setMinimumSize(new Dimension(800, 800));
@@ -297,7 +327,15 @@ public class MainFrame {
             }
 
             try {
-                if (!utils.isOutdated(urlDir)) {
+                boolean outdated = true;
+                if (!hardInstall.isSelected()) {
+                    outdated = utils.isOutdated(urlDir);
+                    if (!outdated) {
+                        outdated = !new Modpack(utils.getModpackName(urlDir)).exists();
+                    }
+                }
+
+                if (!outdated) {
                     utils.setDebug(utils.rgbColor("ModPack is updated!", 155, 240, 175), false);
                 } else {
                     utils.setDebug(utils.rgbColor("Downloading new modpack update...", 255, 100, 100), false);
@@ -472,6 +510,136 @@ public class MainFrame {
                 utils.log(ex);
             }
         });
+
+        checkUpdates.addActionListener(e -> new Config().saveVersionOptions(checkUpdates.isSelected()));
+
+        launchPack.addActionListener(e -> {
+            try {
+                Modpack modpack = new Modpack(utils.getCurrentModpack());
+                if (modpack.exists()) {
+                    new Launch();
+                } else {
+                    utils.setDebug(utils.rgbColor("Modpack not found, please make sure it's installed", 220, 100, 100), true);
+                }
+            } catch (Throwable ex) {
+                utils.log(ex);
+            }
+        });
+
+        c_name.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveClientName(c_name.getText());
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveClientName(c_name.getText());
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveClientName(c_name.getText());
+            }
+        });
+
+        c_mem.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveClientMem(c_mem.getText());
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveClientMem(c_mem.getText());
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveClientMem(c_mem.getText());
+            }
+        });
+
+        chooseFolder.addActionListener(ee -> {
+            JFileChooser chooser = new JFileChooser();
+
+            chooser.setCurrentDirectory(installFolder);
+            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            chooser.setAcceptAllFileFilterUsed(false);
+            chooser.setToolTipText("");
+            chooser.setApproveButtonToolTipText("");
+
+            if (cFrame == null) {
+                cFrame = new JFrame();
+
+                cFrame.setPreferredSize(new Dimension(800, 800));
+                cFrame.setTitle("Choose modpack downloads dest dir");
+                cFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+                cFrame.pack();
+                Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
+                cFrame.setLocation(dimension.width / 2 - cFrame.getPreferredSize().width / 2, dimension.height / 2 - cFrame.getPreferredSize().height / 2);
+                cFrame.add(chooser);
+                cFrame.setResizable(false);
+            }
+
+            if (!cFrame.isVisible()) {
+                cFrame.setVisible(true);
+            } else {
+                cFrame.toFront();
+            }
+
+            cFrame.setSize(new Dimension(800, 800));
+
+            chooser.addActionListener(et -> {
+                if (et.getActionCommand().contains("Approve")) {
+                    if (!chooser.getSelectedFile().equals(installFolder)) {
+                        installFolder = chooser.getSelectedFile();
+                        utils.setDebug(utils.rgbColor("Changed modpack download directory to: " + FilesUtilities.getPath(installFolder), 120, 200, 155), true);
+                        FilesUtilities.getConfig.saveMinecraftDir();
+                        cFrame.setVisible(false);
+                    } else {
+                        utils.setDebug(utils.rgbColor("Same modpack download directory selected, nothing changed", 110, 150, 150), false);
+                    }
+                } else {
+                    if (et.getActionCommand().equals(JFileChooser.CANCEL_SELECTION)) {
+                        cFrame.setVisible(false);
+                        SwingUtilities.updateComponentTreeUI(MainFrame.frame);
+                    }
+                }
+            });
+        });
+
+        exportDebug.addActionListener(e -> {
+            try {
+                File debug = new File(FilesUtilities.getUpdaterDir(), "debug.html");
+
+                if (!debug.exists() && debug.createNewFile()) {
+                    System.out.println("Executed");
+                }
+                String color;
+                String rgb;
+                if (FilesUtilities.getConfig.getTheme().equals("System default")) {
+                    color = "Grey";
+                } else {
+                    color = "DarkGrey";
+                }
+                rgb  = "( R:" + bPane.getBackground().getRed() + ", B:" + bPane.getBackground().getBlue() + ", G:" + bPane.getBackground().getGreen() + " )";
+
+                String totalRGB = bPane.getBackground().getRed() + ", " + bPane.getBackground().getBlue() + ", " + bPane.getBackground().getGreen();
+
+                FileWriter writer = new FileWriter(debug);
+                writer.write("<!-- THEME: " + FilesUtilities.getConfig.getTheme() + ", Base-Color: " + color.replace("DarkGrey", "DARK_GRAY") + "; [AS RGB]: " + rgb + " -->");
+                for (String str : bPane.getText().split("<br>")) {
+                    writer.write(str.replace("<html>", "<html style=\"background-color: rgb(" + totalRGB + ");\">") + "<br>" + "\n");
+                }
+                writer.flush();
+                writer.close();
+
+                utils.setDebug(utils.rgbColor("Exported debug to debug.html", 155, 240, 175), true);
+            } catch (Throwable ex) {
+                utils.log(ex);
+            }
+        });
     }
 
     public static void restartModpacksListeners() {
@@ -562,7 +730,11 @@ public class MainFrame {
             e.printStackTrace();
         }
 
-        new Checker(version).showVersion();
+        if (new Config().checkVersions()) {
+            new Checker(version).showVersion();
+        } else {
+            new MainFrame().initFrame();
+        }
 
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -582,5 +754,15 @@ public class MainFrame {
                 });
             }
         }, 0, 1);
+    }
+
+    protected boolean isValidVersion(String version) {
+        int v = Integer.parseInt(version.replaceAll("[^a-zA-Z0-9]", "").replaceAll("[aA-zZ]", ""));
+
+        if (v < 1000) {
+            return v <= 112;
+        } else {
+            return v <= 1122;
+        }
     }
 }

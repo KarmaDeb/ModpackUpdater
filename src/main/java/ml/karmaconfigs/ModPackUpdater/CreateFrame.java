@@ -1,15 +1,21 @@
 package ml.karmaconfigs.ModPackUpdater;
 
+import lombok.SneakyThrows;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -32,12 +38,19 @@ public final class CreateFrame {
     private static JCheckBox includeTextures;
     private static JCheckBox unzipDebug;
 
-    private static JComboBox<String> version;
+    private static final JComboBox<String> version = new JComboBox<>();
 
     private File mcFolder = FilesUtilities.getConfig.getMinecraftDir();
 
     public CreateFrame() {
-        version = new JComboBox<>(ListVersions.listing.versions());
+        version.removeAllItems();
+        try {
+            for (String v : ListVersions.listing.versions()) {
+                version.addItem(v);
+            }
+        } catch (Throwable e) {
+            utils.log(e);
+        }
         if (creatorFrame == null) {
             creatorFrame = new JFrame();
             creatorFrame.setPreferredSize(new Dimension(900, 600));
@@ -187,7 +200,7 @@ public final class CreateFrame {
 
                 try {
                     assert loaderVersion != null;
-                    utils.setupCreator(urlDir, name.getText(), loaderVersion.toString(), createAsZip.isSelected(), includeShaders.isSelected(), includeTextures.isSelected(), unzipDebug.isSelected());
+                    utils.setupCreator(urlDir, name.getText(), loaderVersion.toString(), ListVersions.listing.getRealVersion(loaderVersion.toString()), createAsZip.isSelected(), includeShaders.isSelected(), includeTextures.isSelected(), unzipDebug.isSelected());
                     Thread creator = new Thread(utils, "Creating");
                     creator.start();
                 } catch (Throwable ex) {
@@ -243,6 +256,50 @@ public final class CreateFrame {
                     FilesUtilities.getConfig.saveCreatorName(name.getText());
                 }
             });
+
+            creatorFrame.addWindowListener(new WindowListener() {
+                @Override
+                public void windowOpened(WindowEvent e) {
+
+                }
+
+                @Override
+                public void windowClosing(WindowEvent e) {
+
+                }
+
+                @Override
+                public void windowClosed(WindowEvent e) {
+
+                }
+
+                @Override
+                public void windowIconified(WindowEvent e) {
+
+                }
+
+                @Override
+                public void windowDeiconified(WindowEvent e) {
+
+                }
+
+                @Override
+                public void windowActivated(WindowEvent e) {
+                    try {
+                        version.removeAllItems();
+                        for (String v : ListVersions.listing.versions()) {
+                            version.addItem(v);
+                        }
+                    } catch (Throwable ex) {
+                        utils.log(ex);
+                    }
+                }
+
+                @Override
+                public void windowDeactivated(WindowEvent e) {
+
+                }
+            });
         } else {
             JFrame errorFrame = new JFrame();
             errorFrame.setPreferredSize(new Dimension(500, 100));
@@ -281,7 +338,9 @@ class ListVersions {
 
 
     public interface listing {
-        static String[] versions() {
+
+        @SneakyThrows
+        static String[] versions() throws Throwable {
             File vFolder = new File(FilesUtilities.getMinecraftDir() + "/versions");
             File[] versions = vFolder.listFiles();
             ArrayList<String> names = new ArrayList<>();
@@ -289,7 +348,18 @@ class ListVersions {
                 for (File version : versions) {
                     String name = version.getName();
                     if (name.contains("forge") || name.contains("fabric")) {
-                        names.add(name);
+                        File json = new File(version, name + ".json");
+                        if (json.exists()) {
+                            FileReader reader = new FileReader(json);
+                            JSONParser jsonParser = new JSONParser();
+                            JSONObject info = (JSONObject) jsonParser.parse(reader);
+
+                            if (info.containsKey("id")) {
+                                if (info.get("id").toString().contains("forge") || info.get("id").toString().contains("fabric")) {
+                                    names.add(name);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -300,6 +370,20 @@ class ListVersions {
             }
 
             return versionNames;
+        }
+
+        static String getRealVersion(String version) throws Throwable  {
+            File json = new File(FilesUtilities.getMinecraftDir() + "/versions/" + version + "/" + version + ".json");
+            if (json.exists()) {
+                FileReader reader = new FileReader(json);
+                JSONParser jsonParser = new JSONParser();
+                JSONObject info = (JSONObject) jsonParser.parse(reader);
+
+                if (info.containsKey("inheritsFrom")) {
+                    return info.get("inheritsFrom").toString();
+                }
+            }
+            return "";
         }
     }
 }

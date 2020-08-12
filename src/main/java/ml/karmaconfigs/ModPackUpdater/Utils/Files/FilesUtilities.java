@@ -41,7 +41,7 @@ public interface FilesUtilities {
     }
 
     @SneakyThrows
-    static File getFileFromURL(String url) {
+    static File getFileFromURL(String url) throws Throwable {
         Utils utils = new Utils();
 
         return new File(getUpdaterDir() + "/modpacks/", utils.getModpackName(url) + ".txt");

@@ -69,10 +69,10 @@ public final class Config {
                     String currentPath = line.split(":")[0];
                     if (!currentPath.equals(path)) {
                         sets.add(line);
-                        continue;
+                    } else {
+                        alreadySet = true;
+                        sets.add(path + ": " + value);
                     }
-                    alreadySet = true;
-                    sets.add(path + ": " + value);
                 }
             }
             if (!alreadySet)
@@ -135,30 +135,56 @@ public final class Config {
     }
 
     public final void saveTheme(String theme) {
+        //System.out.printInt("Saved theme");
         write("THEME", theme);
     }
 
     public final void saveMinecraftDir() {
+        //System.out.printInt("Saved mc dir");
         write("MINECRAFT_DIR", FilesUtilities.getPath(new File(FilesUtilities.getMinecraftDir())));
     }
 
     public final void saveCreatorURL(String url) {
+        //System.out.printInt("Saved creator url");
         write("CREATOR_URL", url);
     }
 
     public final void saveCreatorName(String name) {
+        //System.out.printInt("Saved creator name");
         write("CREATOR_NAME", name);
     }
 
     public final void saveDownloadURL(String url) {
+        //System.out.printInt("Saved download url");
         write("DOWNLOAD_URL", url);
     }
 
     public final void saveCreatorOptions(boolean asZip, boolean textures, boolean shaders, boolean debug) {
+        //System.out.printInt("Saved creator config");
         write("CREATOR_ZIP", String.valueOf(asZip));
         write("CREATOR_TEXTURES", String.valueOf(textures));
         write("CREATOR_SHADERS", String.valueOf(shaders));
         write("CREATOR_DEBUG", String.valueOf(debug));
+    }
+
+    public final void saveVersionOptions(boolean value) {
+        //System.out.printInt("Saved check version config");
+        write("CHECK_VERSION", String.valueOf(value));
+    }
+
+    public final void saveClientName(String name) {
+        //System.out.printInt("Saved client name");
+        write("CLIENT", name);
+    }
+
+    public final void saveClientMem(String mem) {
+        //System.out.printInt("Saved client memory");
+        write("CLIENT_MEM", mem);
+    }
+
+    public final void saveMcDownloadDir(File mcFolder) {
+        //System.out.printInt("Saved mc download folder")
+        write("DOWNLOAD_DIR", FilesUtilities.getPath(mcFolder));
     }
 
     public final String getTheme() {
@@ -167,6 +193,12 @@ public final class Config {
 
     public final File getMinecraftDir() {
         String path = get("MINECRAFT_DIR", FilesUtilities.getMinecraftDir());
+
+        return new File(path);
+    }
+
+    public final File getDownloadDir() {
+        String path = get("DOWNLOAD_DIR", FilesUtilities.getMinecraftDir());
 
         return new File(path);
     }
@@ -181,6 +213,14 @@ public final class Config {
 
     public final String getDownloadURL() {
         return get("DOWNLOAD_URL", "Modpack download.txt url");
+    }
+
+    public final String getClientName() {
+        return get("CLIENT", "Player");
+    }
+
+    public final String getClientMemory() {
+        return get("CLIENT_MEM", "2048");
     }
 
     public final boolean createAsZip() {
@@ -215,6 +255,16 @@ public final class Config {
 
     public final boolean zipDebug() {
         String value = get("CREATOR_DEBUG", "false");
+
+        if (value.equals("true") || value.equals("false")) {
+            return Boolean.parseBoolean(value);
+        } else {
+            return true;
+        }
+    }
+
+    public final boolean checkVersions() {
+        String value = get("CHECK_VERSION", "true");
 
         if (value.equals("true") || value.equals("false")) {
             return Boolean.parseBoolean(value);

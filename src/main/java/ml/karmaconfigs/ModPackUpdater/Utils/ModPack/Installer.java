@@ -29,6 +29,7 @@ public final class Installer {
     public Installer(Modpack modpack, boolean hardInstall) {
         Installer.pack = modpack;
         fullInstall = hardInstall;
+        utils.saveCurrentModpack(modpack);
     }
 
     /**

@@ -23,6 +23,7 @@ public final class Checker {
     private final String version_now_str;
     private final String version_latest_str;
     private final String updateURL;
+    private final ArrayList<String> changelog = new ArrayList<>();
 
     /**
      * Initialize the version checker
@@ -39,14 +40,32 @@ public final class Checker {
         BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
         String word;
         List<String> lines = new ArrayList<>();
-        while ((word = reader.readLine()) != null)
+        while ((word = reader.readLine()) != null) {
             if (!lines.contains(word)) {
                 lines.add(word);
             }
+        }
+
         reader.close();
+
         version_latest_int = Integer.parseInt(lines.get(0).replaceAll("[^a-zA-Z0-9]", "").replaceAll("[aA-zZ]", ""));
         version_latest_str = lines.get(0);
         updateURL = lines.get(1);
+
+        for (int i = 0; i < lines.size(); i++) {
+            String current = lines.get(i);
+            String next = "";
+            if (i + 1 < lines.size()) {
+                next = lines.get(i + 1);
+            }
+            if (!current.equals(updateURL) && !current.equals(version_latest_str)) {
+                if (next.startsWith("-")) {
+                    changelog.add(current + "<br>");
+                } else {
+                    changelog.add(current);
+                }
+            }
+        }
     }
 
     /**
@@ -67,7 +86,7 @@ public final class Checker {
      */
     public final void showVersion() {
         JFrame update = new JFrame();
-        update.setPreferredSize(new Dimension(750, 100));
+        update.setPreferredSize(new Dimension(500, 250));
 
         try {
             update.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
@@ -118,8 +137,23 @@ public final class Checker {
             downloadPanel.add(updatedInfo);
         }
 
-        JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, labelPanel, downloadPanel);
-        splitter.setEnabled(false);
+        JLabel changeLog = new JLabel();
+        JScrollPane changelogInfo = new JScrollPane(changeLog);
+        changelogInfo.setEnabled(false);
+
+        StringBuilder info = new StringBuilder();
+        for (int i = 0; i < changelog.size(); i++) {
+            if (i != changelog.size() - 1) {
+                info.append(changelog.get(i)).append("<br>");
+            } else {
+                info.append(changelog.get(i));
+            }
+        }
+        changeLog.setText("<html><div>" + info.toString() + "</div></html>");
+
+        JSplitPane splitterOne = new JSplitPane(JSplitPane.VERTICAL_SPLIT, labelPanel, downloadPanel);
+        splitterOne.setEnabled(false);
+        JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, splitterOne, changelogInfo);
 
         update.setTitle("Modpack version checker");
         update.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
