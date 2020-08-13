@@ -7,13 +7,11 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 public final class Launch {
 
@@ -61,7 +59,7 @@ public final class Launch {
                         if (!tweak.isEmpty()) {
                             String arg_legacy = "java -Xms512M -Xmx{min}M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump -Djava.library.path={natives} -cp {libraries} {mainClass} --width 854 --height 480 --username {name} --version {version} --gameDir {game} --assetsDir {assetsDir} --assetIndex {assetsIndex} --uuid {uuid} --accessToken null --tweakClass {tweakLoader} --versionType {type}";
                             arg = arg_legacy
-                                    .replace("{min}", FilesUtilities.getConfig.getClientMemory())
+                                    .replace("{min}", FilesUtilities.getConfig.getFakeClientMemory())
                                     .replace("{natives}", natives)
                                     .replace("{libraries}", libs)
                                     .replace("{mainClass}", getMainClass(modpack.getVersionName()))
@@ -76,7 +74,7 @@ public final class Launch {
                         } else {
                             String args_actuality = "java -Xms512M -Xmx{min}M -XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump -Djava.library.path={natives} -cp {libraries} {mainClass} --width 854 --height 480 --username {name} --version {version} --gameDir {game} --assetsDir {assetsDir} --assetIndex {assetsIndex} --uuid {uuid} --accessToken null --launchTarget fmlclient --fml.forgeVersion {f_version} --fml.mcVersion {f_mcVersion} --fml.mcpVersion {f_mcpVersion} --fml.forgeGroup net.minecraftforge --versionType {type}";
                             arg = args_actuality
-                                    .replace("{min}", FilesUtilities.getConfig.getClientMemory())
+                                    .replace("{min}", FilesUtilities.getConfig.getFakeClientMemory())
                                     .replace("{natives}", natives)
                                     .replace("{libraries}", libs)
                                     .replace("{mainClass}", getMainClass(modpack.getVersionName()))
@@ -97,20 +95,12 @@ public final class Launch {
 
                     utils.setDebug(utils.rgbColor("Trying to launch minecraft using args: " + arg, 155, 240, 175), true);
                     System.out.println(arg);
+
                     try {
                         ProcessBuilder builder = new ProcessBuilder(arg.split(" "));
-                        builder.directory(new File(FilesUtilities.getMinecraftDir() + "/bin"));
+                        builder.directory(FilesUtilities.getModpackLaunchDir(modpack));
 
-                        Process process = builder.start();
-                        process.waitFor(10, TimeUnit.SECONDS);
-
-                        if (!process.isAlive()) {
-                            if (process.exitValue() != 0) {
-                                utils.setDebug(utils.rgbColor("[ERROR] Process ended with code " + process.exitValue(), 220, 100, 100), true);
-                                utils.display(process);
-                                process.destroy();
-                            }
-                        }
+                        builder.start();
                     } catch (Throwable e) {
                         utils.log(e);
                     }

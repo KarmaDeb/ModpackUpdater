@@ -24,6 +24,7 @@ public final class CreateFrame {
     private final Utils utils = new Utils();
 
     public static JFrame creatorFrame;
+    public static JFrame errorFrame;
 
     public static final JFileChooser chooser = new JFileChooser();
 
@@ -39,6 +40,7 @@ public final class CreateFrame {
     private static JCheckBox unzipDebug;
 
     private static final JComboBox<String> version = new JComboBox<>();
+    private static String selected = "";
 
     private File mcFolder = FilesUtilities.getConfig.getMinecraftDir();
 
@@ -290,6 +292,9 @@ public final class CreateFrame {
                         for (String v : ListVersions.listing.versions()) {
                             version.addItem(v);
                         }
+                        if (contains(selected)) {
+                            version.setSelectedItem(selected);
+                        }
                     } catch (Throwable ex) {
                         utils.log(ex);
                     }
@@ -300,29 +305,33 @@ public final class CreateFrame {
 
                 }
             });
+
+            version.addActionListener(e -> selected = String.valueOf(version.getSelectedItem()));
         } else {
-            JFrame errorFrame = new JFrame();
-            errorFrame.setPreferredSize(new Dimension(500, 100));
+            if (errorFrame == null) {
+                errorFrame = new JFrame();
+                errorFrame.setPreferredSize(new Dimension(500, 100));
 
-            try {
-                errorFrame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
-            } catch (Throwable e) {
-                e.printStackTrace();
+                try {
+                    errorFrame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+
+                JPanel infoPanel = new JPanel();
+                JLabel error = new JLabel();
+                error.setText("<html>No forge version detected,<br>please install a forge version<br>before using the modpack creator</html>");
+
+                infoPanel.add(error);
+
+                errorFrame.setTitle("Something went wrong...");
+                errorFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+                errorFrame.pack();
+                Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
+                errorFrame.setLocation(dim.width / 2 - errorFrame.getSize().width / 2, dim.height / 2 - errorFrame.getSize().height / 2);
+                errorFrame.setResizable(false);
+                errorFrame.add(infoPanel);
             }
-
-            JPanel infoPanel = new JPanel();
-            JLabel error = new JLabel();
-            error.setText("<html>No forge/fabric version detected,<br>please install a forge or fabric<br>version before using the modpack creator</html>");
-
-            infoPanel.add(error);
-
-            errorFrame.setTitle("Something went wrong...");
-            errorFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            errorFrame.pack();
-            Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-            errorFrame.setLocation(dim.width / 2 - errorFrame.getSize().width / 2, dim.height / 2 - errorFrame.getSize().height / 2);
-            errorFrame.setResizable(false);
-            errorFrame.add(infoPanel);
             errorFrame.setVisible(true);
         }
     }
@@ -331,6 +340,15 @@ public final class CreateFrame {
         for (JSplitPane pane : panes) {
             pane.setEnabled(false);
         }
+    }
+
+    private boolean contains(String value) {
+        for (int i = 0; i < version.getItemCount(); i++) {
+            if (version.getItemAt(i).equals(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -347,7 +365,7 @@ class ListVersions {
             if (versions != null && !Arrays.asList(versions).isEmpty()) {
                 for (File version : versions) {
                     String name = version.getName();
-                    if (name.contains("forge") || name.contains("fabric")) {
+                    if (name.contains("forge")) {
                         File json = new File(version, name + ".json");
                         if (json.exists()) {
                             FileReader reader = new FileReader(json);
@@ -355,7 +373,7 @@ class ListVersions {
                             JSONObject info = (JSONObject) jsonParser.parse(reader);
 
                             if (info.containsKey("id")) {
-                                if (info.get("id").toString().contains("forge") || info.get("id").toString().contains("fabric")) {
+                                if (info.get("id").toString().contains("forge")) {
                                     names.add(name);
                                 }
                             }

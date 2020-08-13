@@ -173,12 +173,12 @@ public final class Config {
     }
 
     public final void saveClientName(String name) {
-        //System.out.printInt("Saved client name");
+        //System.out.println("Saved client name: " + name);
         write("CLIENT", name);
     }
 
     public final void saveClientMem(String mem) {
-        //System.out.printInt("Saved client memory");
+        //System.out.println("Saved client memory: " + mem);
         write("CLIENT_MEM", mem);
     }
 
@@ -221,6 +221,15 @@ public final class Config {
 
     public final String getClientMemory() {
         return get("CLIENT_MEM", "2048");
+    }
+
+    public final String getFakeClientMemory() {
+        String mem = getClientMemory();
+
+        int memToInt = Integer.parseInt(mem);
+        memToInt = memToInt + 1000;
+
+        return String.valueOf(memToInt);
     }
 
     public final boolean createAsZip() {

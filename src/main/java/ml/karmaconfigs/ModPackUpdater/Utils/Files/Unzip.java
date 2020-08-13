@@ -71,6 +71,11 @@ public final class Unzip implements Runnable {
                                 continue;
                             }
                         } else {
+                            File path = new File(file.getPath().replace(file.getName(), ""));
+                            if (!path.exists() && path.mkdirs()) {
+                                System.out.println("Executed");
+                            }
+
                             utils.setDebug(utils.rgbColor("Unzipping file " + entry.getName() + " to " + FilesUtilities.getPath(file), 125, 255, 195), unzipped == 1);
 
                             byte[] buffer = new byte[2048];

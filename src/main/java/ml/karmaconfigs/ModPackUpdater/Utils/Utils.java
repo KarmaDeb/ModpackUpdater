@@ -21,6 +21,8 @@ import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 
 public final class Utils extends MainFrame implements Runnable {
 
@@ -104,42 +106,6 @@ public final class Utils extends MainFrame implements Runnable {
         }
     }
 
-    public final void display(Process process) {
-        StringBuilder builder = new StringBuilder();
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line).append("<br>");
-            }
-
-            reader.close();
-        } catch (Throwable e) {
-            log(e);
-        }
-
-        setDebug(rgbColor(builder.toString(), 220, 100, 100), true);
-    }
-
-    public final void displayInfo(Process process) {
-        StringBuilder builder = new StringBuilder();
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line).append("<br>");
-            }
-
-            reader.close();
-        } catch (Throwable e) {
-            log(e);
-        }
-
-        setDebug(rgbColor(builder.toString(), 220, 100, 100), true);
-    }
-
     private static String baseURL = "";
     private static String name = "";
     private static String version = "NULL_VERSION";
@@ -162,6 +128,7 @@ public final class Utils extends MainFrame implements Runnable {
 
     @Override
     public void run() {
+        CopyFile copy = null;
         try {
             Modpack modpack = new Modpack(name);
             modpack.createFile();
@@ -178,6 +145,12 @@ public final class Utils extends MainFrame implements Runnable {
 
             delZip();
             deleteInModFolder(modpack);
+            deleteInVersionFolder(modpack);
+
+            File downloadTxt = new File(FilesUtilities.getModpackUploadDir(modpack), "download.txt");
+            if (downloadTxt.exists() && downloadTxt.delete()) {
+                setDebug(rgbColor("Removed old download.txt file", 155, 240, 175), true);
+            }
 
             setDebug(rgbColor("Creating modpack download file...", 155, 240, 175), true);
             File modsFolder = new File(mcFolder + "/mods");
@@ -221,11 +194,25 @@ public final class Utils extends MainFrame implements Runnable {
                     File vFile = null;
                     if (version != null && !version.isEmpty() && new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).exists()) {
                         vFile = new File(FilesUtilities.getMinecraftDir() + "/versions/" + version);
-                        FileUtils.copyDirectory(vFile, new File(FilesUtilities.getModpackUploadDir(modpack) + "/versions"));
+                        File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/versions/");
+
+                        if (!destDir.exists() && destDir.mkdirs()) {
+                            System.out.println("Executed");
+                        }
+
+                        File[] files = vFile.listFiles();
+                        if (files != null) {
+                            for (File file : files) {
+                                if (!file.isDirectory()) {
+                                    FileUtils.copyFileToDirectory(file, destDir);
+                                }
+                            }
+                        }
+                        vFile = destDir;
                     }
 
                     if (asZip) {
-                        CopyFile copy = new CopyFile(null, vFile, modpack, includeTextures, includeShaders, enableDebug);
+                        copy = new CopyFile(vFile, modpack, includeTextures, includeShaders, enableDebug);
                         Thread thread = new Thread(copy, "Zipping");
                         thread.start();
                     }
@@ -274,7 +261,23 @@ public final class Utils extends MainFrame implements Runnable {
                 file.write("MODS", modNames);
                 modpack.getFile().write("MODS", modNames);
 
-                displayPackInfo(modpack);
+                if (asZip) {
+                    assert copy != null;
+
+                    Timer timer = new Timer();
+                    CopyFile finalCopy = copy;
+                    timer.schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (finalCopy.isFinished()) {
+                                displayPackInfo(modpack);
+                                timer.cancel();
+                            }
+                        }
+                    }, 0, 1);
+                } else {
+                    displayPackInfo(modpack);
+                }
             } else {
                 setDebug(rgbColor("Couldn't find mods folder, is it the minecraft folder? ( <span style=\"color: rgb(100, 100, 255);\">" + FilesUtilities.getPath(mcFolder) + "</span> )", 120, 100, 100), true);
             }
@@ -300,7 +303,13 @@ public final class Utils extends MainFrame implements Runnable {
         }
 
         bPane.setText("<html>" + oldText + separator + newLine + "</html>");
-        jsp.getVerticalScrollBar().setValue(jsp.getVerticalScrollBar().getMaximum());
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                jsp.getVerticalScrollBar().setValue(jsp.getVerticalScrollBar().getMaximum());
+            }
+        }, 500);
     }
 
     public final void setProgress(String title, int progress) {
@@ -425,7 +434,6 @@ public final class Utils extends MainFrame implements Runnable {
         CustomFile file = new CustomFile(modpackInfo, true);
 
         file.write("CURRENT", modpack.getName());
-        launchPack.setText("Launch modpack ( " + modpack.getName() + " )");
     }
 
     public final boolean isOutdated(String url) {
@@ -530,53 +538,85 @@ public final class Utils extends MainFrame implements Runnable {
             } else {
                 File[] mods = inModFolder.listFiles();
                 if (mods != null) {
+                    int removed = 0;
                     for (File mod : mods) {
+                        removed++;
                         if (mod.delete()) {
-                            setDebug(rgbColor("Removed old in-mod file " + mod.getName(), 155, 240, 175), true);
+                            setDebug(rgbColor("Removed old in-mod file " + mod.getName(), 155, 240, 175), removed == 1);
                         } else {
-                            setDebug(rgbColor("Couldn't remove old in-mod file " + mod.getName(), 220, 100, 100), true);
+                            setDebug(rgbColor("Couldn't remove old in-mod file " + mod.getName(), 220, 100, 100), removed == 1);
                         }
                     }
+                    setDebug(rgbColor("Removed a total of " + removed + " old mod files", 155, 240, 175), true);
+                }
+            }
+        }
+    }
+
+    private void deleteInVersionFolder(Modpack modpack) {
+        File inVersionFile = new File(FilesUtilities.getModpackUploadDir(modpack) + "/versions/");
+        if (inVersionFile.exists()) {
+            if (inVersionFile.delete()) {
+                setDebug(rgbColor("Removed old in-versions folder", 155, 240, 175), true);
+            } else {
+                File[] files = inVersionFile.listFiles();
+                if (files != null) {
+                    int removed = 0;
+                    for (File file : files) {
+                        removed++;
+                        if (file.delete()) {
+                            setDebug(rgbColor("Removed old in-version file " + file.getName(), 155, 240, 175), removed == 1);
+                        } else {
+                            setDebug(rgbColor("Couldn't remove old in-version file " + file.getName(), 220, 100, 100), removed == 1);
+                        }
+                    }
+                    setDebug(rgbColor("Removed a total of " + removed + " old version files", 155, 240, 175), true);
                 }
             }
         }
     }
 
     private void deleteInTextureFolder(Modpack modpack) {
-        File inModFolder = new File(FilesUtilities.getModpackUploadDir(modpack) + "/texturepacks/");
-        if (inModFolder.exists()) {
-            if (inModFolder.delete()) {
+        File inTexturesFolder = new File(FilesUtilities.getModpackUploadDir(modpack) + "/texturepacks/");
+        if (inTexturesFolder.exists()) {
+            if (inTexturesFolder.delete()) {
                 setDebug(rgbColor("Removed old in-textures folder", 155, 240, 175), true);
             } else {
-                File[] mods = inModFolder.listFiles();
-                if (mods != null) {
-                    for (File mod : mods) {
-                        if (mod.delete()) {
-                            setDebug(rgbColor("Removed old in-texture file " + mod.getName(), 155, 240, 175), true);
+                File[] textures = inTexturesFolder.listFiles();
+                if (textures != null) {
+                    int removed = 0;
+                    for (File texture : textures) {
+                        removed++;
+                        if (texture.delete()) {
+                            setDebug(rgbColor("Removed old in-texture file " + texture.getName(), 155, 240, 175), removed == 1);
                         } else {
-                            setDebug(rgbColor("Couldn't remove old in-texture file " + mod.getName(), 220, 100, 100), true);
+                            setDebug(rgbColor("Couldn't remove old in-texture file " + texture.getName(), 220, 100, 100), removed == 1);
                         }
                     }
+                    setDebug(rgbColor("Removed a total of " + removed + " old texture files", 155, 240, 175), true);
                 }
             }
         }
     }
 
     private void deleteInShaderFolder(Modpack modpack) {
-        File inModFolder = new File(FilesUtilities.getModpackUploadDir(modpack) + "/shaderpacks/");
-        if (inModFolder.exists()) {
-            if (inModFolder.delete()) {
+        File inShadersFolder = new File(FilesUtilities.getModpackUploadDir(modpack) + "/shaderpacks/");
+        if (inShadersFolder.exists()) {
+            if (inShadersFolder.delete()) {
                 setDebug(rgbColor("Removed old in-shader folder", 155, 240, 175), true);
             } else {
-                File[] mods = inModFolder.listFiles();
-                if (mods != null) {
-                    for (File mod : mods) {
-                        if (mod.delete()) {
-                            setDebug(rgbColor("Removed old in-shader file " + mod.getName(), 155, 240, 175), true);
+                File[] shaders = inShadersFolder.listFiles();
+                if (shaders != null) {
+                    int removed = 0;
+                    for (File shader : shaders) {
+                        removed++;
+                        if (shader.delete()) {
+                            setDebug(rgbColor("Removed old in-shaders file " + shader.getName(), 155, 240, 175), removed == 1);
                         } else {
-                            setDebug(rgbColor("Couldn't remove old in-shader file " + mod.getName(), 220, 100, 100), true);
+                            setDebug(rgbColor("Couldn't remove old in-shaders file " + shader.getName(), 220, 100, 100), removed == 1);
                         }
                     }
+                    setDebug(rgbColor("Removed a total of " + removed + " old shaders files", 155, 240, 175), true);
                 }
             }
         }

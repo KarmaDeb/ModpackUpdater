@@ -104,4 +104,13 @@ public interface FilesUtilities {
 
         return uploadDir;
     }
+
+    static File getModpackLaunchDir(Modpack modpack) {
+        File launchDir = new File(getUpdaterDir() + "/launcher/" + modpack.getName() + "/");
+        if (!launchDir.exists() && launchDir.mkdirs()) {
+            System.out.println("Executed");
+        }
+
+        return launchDir;
+    }
 }

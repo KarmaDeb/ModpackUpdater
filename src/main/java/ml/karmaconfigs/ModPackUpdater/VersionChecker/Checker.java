@@ -30,8 +30,7 @@ public final class Checker {
      *
      * @param realVersion the running version
      */
-    @SneakyThrows
-    public Checker(String realVersion) {
+    public Checker(String realVersion) throws Throwable {
         if (realVersion == null || realVersion.isEmpty()) realVersion = "0";
         version_now_str = realVersion;
         version_now_int = Integer.parseInt(version_now_str.replaceAll("[^a-zA-Z0-9]", "").replaceAll("[aA-zZ]", ""));
@@ -149,6 +148,7 @@ public final class Checker {
                 info.append(changelog.get(i));
             }
         }
+
         changeLog.setText("<html><div>" + info.toString() + "</div></html>");
 
         JSplitPane splitterOne = new JSplitPane(JSplitPane.VERTICAL_SPLIT, labelPanel, downloadPanel);

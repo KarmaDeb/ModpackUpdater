@@ -13,16 +13,16 @@ import java.util.zip.ZipOutputStream;
 
 public final class CopyFile implements Runnable {
 
-    private static File file, version;
+    private static File version;
     private static Modpack modpack;
     private static boolean textures, shaders;
 
     private final boolean debug;
+    private boolean finished = false;
 
     private final Utils utils = new Utils();
 
-    public CopyFile(File file, File loaderVersion, Modpack modpack, boolean textures, boolean shaders, boolean debug) {
-        CopyFile.file = file;
+    public CopyFile(File loaderVersion, Modpack modpack, boolean textures, boolean shaders, boolean debug) {
         CopyFile.version = loaderVersion;
         CopyFile.modpack = modpack;
         CopyFile.textures = textures;
@@ -156,6 +156,8 @@ public final class CopyFile implements Runnable {
             zip.closeEntry();
             zip.close();
             zipFile.close();
+        } catch (Throwable e) {
+            utils.log(e);
         } finally {
             utils.setProgress("Download bar status", 1);
             utils.setDebug(utils.rgbColor("Modpack zipped, click on \"Open modpack files dir\" to get the download files you have to put in your host", 155, 240, 175), true);
@@ -168,6 +170,12 @@ public final class CopyFile implements Runnable {
                 Thread thread = new Thread(unzip, "Unzipping");
                 thread.start();
             }
+
+            finished = true;
         }
+    }
+
+    public final boolean isFinished() {
+        return finished;
     }
 }

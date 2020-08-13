@@ -4,7 +4,6 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.Launcher.Launch;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.*;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
 import ml.karmaconfigs.ModPackUpdater.VersionChecker.Checker;
@@ -17,9 +16,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.event.MouseInputAdapter;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
+import java.io.*;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -46,12 +43,10 @@ public class MainFrame {
 
     public static JProgressBar bar;
 
-    public static JButton launchPack;
+    public static JButton launchPane;
     public static JButton chooseFolder;
 
     private static JTextArea dlURL;
-    protected static JTextArea c_name;
-    protected static JTextArea c_mem;
 
     public static File mcFolder;
     private File installFolder;
@@ -95,10 +90,6 @@ public class MainFrame {
         JCheckBox checkUpdates = new JCheckBox("Version checker");
 
         //Text areas
-        c_name = new JTextArea("Player");
-        c_name.setText(FilesUtilities.getConfig.getClientName());
-        c_mem = new JTextArea("2048");
-        c_mem.setText(FilesUtilities.getConfig.getClientMemory());
         dlURL = new JTextArea("Modpack download.txt url");
         dlURL.setText(FilesUtilities.getConfig.getDownloadURL());
 
@@ -107,7 +98,7 @@ public class MainFrame {
         JButton install = new JButton("Install modpack");
         JButton list = new JButton("List mods");
         JButton createPanel = new JButton("Creator panel");
-        launchPack = new JButton("Launch modpack ( " + utils.getCurrentModpack() + " )");
+        launchPane = new JButton("Launcher panel");
         chooseFolder = new JButton("MC download folder");
         JButton exportDebug = new JButton("Export debug");
 
@@ -117,6 +108,8 @@ public class MainFrame {
         JPanel managerPanel = new JPanel();
         JPanel themePane = new JPanel();
         JPanel modpackPane = new JPanel();
+        JPanel launcherPanel = new JPanel();
+        JPanel chooserPanel = new JPanel();
 
         //Labels
         bPane = new JLabel();
@@ -136,12 +129,10 @@ public class MainFrame {
         JSplitPane themeLabel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, themeText, theme);
         modpackLabel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, packText, modpacks);
 
-        JSplitPane managerSplitterOne = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, c_mem, c_name);
-        JSplitPane managerSpacer = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSplitterOne, new JPanel());
-        JSplitPane managerSplitterTwo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, themePane, modpackPane);
-        JSplitPane managerSplitterThree = new JSplitPane(JSplitPane.VERTICAL_SPLIT, launchPack, chooseFolder);
-        JSplitPane managerSplitterFour = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSplitterTwo, managerSplitterThree);
-        JSplitPane managerSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSpacer, managerSplitterFour);
+        JSplitPane managerSplitterOne = new JSplitPane(JSplitPane.VERTICAL_SPLIT, themePane, modpackPane);
+        JSplitPane managerSplitterTwo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, launcherPanel, chooserPanel);
+        JSplitPane managerSplitterThree = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSplitterTwo, managerSplitterOne);
+        JSplitPane managerSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, managerSplitterThree, new JPanel());
         JSplitPane optionOneSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, leftTop, managerSplitter);
         JSplitPane optionTwoSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionOneSplitter, checkUpdates);
 
@@ -155,7 +146,7 @@ public class MainFrame {
         JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, bar, barSplitter);
 
         //Disable the split panes resizing...
-        disable(installSplit, options, manager, leftTop, themeLabel, modpackLabel, managerSpacer, managerSplitterOne, managerSplitterTwo, managerSplitterThree, managerSplitterFour, managerSplitter, optionOneSplitter, optionTwoSplitter, left, right, barSplitter, splitter);
+        disable(installSplit, options, manager, leftTop, themeLabel, modpackLabel, managerSplitterOne, managerSplitterTwo, managerSplitterThree, managerSplitter, optionOneSplitter, optionTwoSplitter, left, right, barSplitter, splitter);
 
         //Make all the panels work and display the correct way
         //Yes, I use brackets to separate it '-'
@@ -169,6 +160,7 @@ public class MainFrame {
 
                 //This actually sucks...
                 themeLabel.setDividerSize(19);
+                managerSplitterTwo.setDividerSize(-5);
 
                 //Grouping left-bottom options
                 managerSplitter.setDividerSize(-5);
@@ -181,7 +173,7 @@ public class MainFrame {
 
             //Sync the boxes size
             {
-                syncSize(installSplit, download, install, list, createPanel, theme, modpacks);
+                syncSize(installSplit, download, install, list, createPanel, theme, modpacks, launchPane, chooseFolder);
             }
 
             { //Panels options
@@ -190,6 +182,8 @@ public class MainFrame {
                 managerPanel.add(manager);
                 themePane.add(themeLabel);
                 modpackPane.add(modpackLabel);
+                launcherPanel.add(launchPane);
+                chooserPanel.add(chooseFolder);
             }
         }
 
@@ -513,50 +507,13 @@ public class MainFrame {
 
         checkUpdates.addActionListener(e -> new Config().saveVersionOptions(checkUpdates.isSelected()));
 
-        launchPack.addActionListener(e -> {
+        launchPane.addActionListener(e -> {
             try {
                 Modpack modpack = new Modpack(utils.getCurrentModpack());
-                if (modpack.exists()) {
-                    new Launch();
-                } else {
-                    utils.setDebug(utils.rgbColor("Modpack not found, please make sure it's installed", 220, 100, 100), true);
-                }
+                LaunchFrame lFrame = new LaunchFrame(modpack);
+                lFrame.display();
             } catch (Throwable ex) {
                 utils.log(ex);
-            }
-        });
-
-        c_name.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveClientName(c_name.getText());
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveClientName(c_name.getText());
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveClientName(c_name.getText());
-            }
-        });
-
-        c_mem.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveClientMem(c_mem.getText());
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveClientMem(c_mem.getText());
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveClientMem(c_mem.getText());
             }
         });
 
@@ -595,7 +552,7 @@ public class MainFrame {
                     if (!chooser.getSelectedFile().equals(installFolder)) {
                         installFolder = chooser.getSelectedFile();
                         utils.setDebug(utils.rgbColor("Changed modpack download directory to: " + FilesUtilities.getPath(installFolder), 120, 200, 155), true);
-                        FilesUtilities.getConfig.saveMinecraftDir();
+                        FilesUtilities.getConfig.saveMcDownloadDir(installFolder);
                         cFrame.setVisible(false);
                     } else {
                         utils.setDebug(utils.rgbColor("Same modpack download directory selected, nothing changed", 110, 150, 150), false);
@@ -640,6 +597,16 @@ public class MainFrame {
                 utils.log(ex);
             }
         });
+
+        /*frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (Launch.process != null && Launch.process.isAlive()) {
+                    utils.setDebug(utils.rgbColor("Closing minecraft...", 155, 240, 175), true);
+                    Launch.process.destroy();
+                }
+            }
+        });*/
     }
 
     public static void restartModpacksListeners() {
@@ -731,7 +698,11 @@ public class MainFrame {
         }
 
         if (new Config().checkVersions()) {
-            new Checker(version).showVersion();
+            try {
+                new Checker(version).showVersion();
+            } catch (Throwable e) {
+                new MainFrame().initFrame();
+            }
         } else {
             new MainFrame().initFrame();
         }
@@ -754,15 +725,5 @@ public class MainFrame {
                 });
             }
         }, 0, 1);
-    }
-
-    protected boolean isValidVersion(String version) {
-        int v = Integer.parseInt(version.replaceAll("[^a-zA-Z0-9]", "").replaceAll("[aA-zZ]", ""));
-
-        if (v < 1000) {
-            return v <= 112;
-        } else {
-            return v <= 1122;
-        }
     }
 }

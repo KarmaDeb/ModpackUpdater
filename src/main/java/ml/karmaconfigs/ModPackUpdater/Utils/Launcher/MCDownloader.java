@@ -8,7 +8,6 @@ import org.apache.commons.io.FileUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import tagapi_3.ExUtils;
 
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
@@ -560,7 +559,7 @@ class DownloadNatives implements Runnable {
     private ArrayList<String> getNativesURL(File json) {
         ArrayList<String> version_url_list_natives = new ArrayList<>();
         try {
-            String natives_OS = new ExUtils().getOS();
+            String natives_OS = Utils.os.getOS();
             switch (natives_OS) {
                 case "Linux":
                     natives_OS = natives_OS.replace("Linux", "natives-linux");
@@ -607,7 +606,7 @@ class DownloadNatives implements Runnable {
     private ArrayList<String> getNativesPath(File json) {
         ArrayList<String> version_path_list_natives = new ArrayList<>();
         try {
-            String natives_OS = new ExUtils().getOS();
+            String natives_OS = Utils.os.getOS();
             switch (natives_OS) {
                 case "Linux":
                     natives_OS = natives_OS.replace("Linux", "natives-linux");
