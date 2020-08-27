@@ -139,9 +139,9 @@ public final class Config {
         write("THEME", theme);
     }
 
-    public final void saveMinecraftDir() {
+    public final void saveMinecraftDir(File dir) {
         //System.out.printInt("Saved mc dir");
-        write("MINECRAFT_DIR", FilesUtilities.getPath(new File(FilesUtilities.getMinecraftDir())));
+        write("MINECRAFT_DIR", FilesUtilities.getPath(dir));
     }
 
     public final void saveCreatorURL(String url) {

@@ -173,7 +173,7 @@ public final class CreateFrame {
                     if (!chooser.getSelectedFile().equals(mcFolder)) {
                         mcFolder = chooser.getSelectedFile();
                         utils.setDebug(utils.rgbColor("Changed minecraft directory to: " + FilesUtilities.getPath(mcFolder), 120, 200, 155), true);
-                        FilesUtilities.getConfig.saveMinecraftDir();
+                        FilesUtilities.getConfig.saveMinecraftDir(mcFolder);
                     } else {
                         utils.setDebug(utils.rgbColor("Same minecraft directory selected, nothing changed", 110, 150, 150), false);
                     }

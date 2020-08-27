@@ -2,6 +2,7 @@ package ml.karmaconfigs.ModPackUpdater;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import com.formdev.flatlaf.intellijthemes.FlatDarkPurpleIJTheme;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.*;
@@ -82,7 +83,7 @@ public class MainFrame {
         Nobody should use "System default" since it looks pretty bad and honestly, it works really slow :)
         Should I remove it in a future version?
         */
-        JComboBox<String> theme = new JComboBox<>(new String[]{"Light", "Dark", "System default"});
+        JComboBox<String> theme = new JComboBox<>(new String[]{"Light", "Dark", "Dark 2", "System default"});
         theme.setSelectedItem(FilesUtilities.getConfig.getTheme());
 
         //Check boxes
@@ -257,6 +258,14 @@ public class MainFrame {
                                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                                 if (Utils.info != null && Utils.infoScrollable != null) {
                                     Utils.infoScrollable.setBackground(Color.GRAY);
+                                }
+                                break;
+                            case "Dark 2":
+                                bPane.setOpaque(true);
+                                bPane.setBackground(Color.DARK_GRAY);
+                                UIManager.setLookAndFeel(FlatDarkPurpleIJTheme.class.getCanonicalName());
+                                if (Utils.info != null && Utils.infoScrollable != null) {
+                                    Utils.infoScrollable.setBackground(Color.DARK_GRAY);
                                 }
                                 break;
                             default:
@@ -672,6 +681,7 @@ public class MainFrame {
     public static void main(String[] args) {
         FlatLightLaf.install();
         FlatDarkLaf.install();
+        FlatDarkPurpleIJTheme.install();
 
         try {
             String themeName = new Config().getTheme();
@@ -685,6 +695,10 @@ public class MainFrame {
                 case "Dark":
                     finalTheme = "Dark";
                     UIManager.setLookAndFeel(FlatDarkLaf.class.getCanonicalName());
+                    break;
+                case "Dark 2":
+                    finalTheme = "Dark 2";
+                    UIManager.setLookAndFeel(FlatDarkPurpleIJTheme.class.getCanonicalName());
                     break;
                 default:
                     finalTheme = "System default";

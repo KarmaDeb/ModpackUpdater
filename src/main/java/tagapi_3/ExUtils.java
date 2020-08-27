@@ -24,44 +24,26 @@
 
 package tagapi_3;
 
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Locale;
-import org.apache.commons.io.FileUtils;
-import java.security.SecureRandom;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.Enumeration;
 import com.alemcode.HexEditor.HexEditor;
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-import org.apache.commons.io.FileUtils;
-import static org.zeroturnaround.zip.commons.FileUtils.copy;
 import com.minecraft.moonlake.nbt.NBTBase;
 import com.minecraft.moonlake.nbt.NBTTagCompound;
 import com.minecraft.moonlake.nbt.NBTUtil;
 import org.apache.commons.io.FileUtils;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.*;
+import java.math.BigInteger;
+import java.net.URI;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import static org.zeroturnaround.zip.commons.FileUtils.copy;
+
 /**
  *
  * @author Ammar Ahmad

@@ -22,7 +22,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Timer;
-import java.util.concurrent.TimeUnit;
 
 public final class Utils extends MainFrame implements Runnable {
 
