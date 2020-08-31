@@ -15,17 +15,18 @@ public final class CopyFile implements Runnable {
 
     private static File version;
     private static Modpack modpack;
-    private static boolean textures, shaders;
+    private static boolean textures, shaders, configs;
 
     private final boolean debug;
     private boolean finished = false;
 
     private final Utils utils = new Utils();
 
-    public CopyFile(File loaderVersion, Modpack modpack, boolean textures, boolean shaders, boolean debug) {
+    public CopyFile(File loaderVersion, Modpack modpack, boolean textures, boolean shaders, boolean configs, boolean debug) {
         CopyFile.version = loaderVersion;
         CopyFile.modpack = modpack;
         CopyFile.textures = textures;
+        CopyFile.configs = configs;
         CopyFile.shaders = shaders;
         this.debug = debug;
     }
@@ -37,6 +38,7 @@ public final class CopyFile implements Runnable {
         File srcMods = new File(FilesUtilities.getModpackUploadDir(modpack), "/mods");
         File srcTextures = new File(FilesUtilities.getModpackUploadDir(modpack), "/resourcepacks");
         File srcShaders = new File(FilesUtilities.getModpackUploadDir(modpack), "/shaderpacks");
+        File srcConfigs = new File(FilesUtilities.getModpackUploadDir(modpack), "/config");
         boolean hasVersion = version != null;
         File srcVersions = null;
         if (hasVersion) {
@@ -47,6 +49,7 @@ public final class CopyFile implements Runnable {
         int texturesAmount = 0;
         int shadersAmount = 0;
         int versionsAmount = 0;
+        int configsAmounts = 0;
 
         if (srcMods.listFiles() != null) {
             modsAmount = srcMods.listFiles().length;
@@ -57,13 +60,16 @@ public final class CopyFile implements Runnable {
         if (srcShaders.listFiles() != null) {
             shadersAmount = srcShaders.listFiles().length;
         }
+        if (srcConfigs.listFiles() != null) {
+            configsAmounts = srcConfigs.listFiles().length;
+        }
         if (hasVersion) {
             if (srcVersions.listFiles() != null) {
                 versionsAmount = srcVersions.listFiles().length;
             }
         }
 
-        int totalAmount = modsAmount + texturesAmount + shadersAmount + versionsAmount;
+        int totalAmount = modsAmount + texturesAmount + shadersAmount + configsAmounts + versionsAmount;
         int zippedAmount = 0;
 
         try {
@@ -131,6 +137,32 @@ public final class CopyFile implements Runnable {
                     }
                 }
             }
+            if (configs) {
+                File[] configs = srcConfigs.listFiles();
+                if (configs != null) {
+                    for (File fileName : configs) {
+                        if (!fileName.isDirectory()) {
+                            zippedAmount++;
+
+                            byte[] buf = new byte[1024];
+                            int len;
+                            try (FileInputStream in = new FileInputStream(fileName)) {
+                                String name = fileName.getName();
+                                utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), zippedAmount == 1);
+                                zip.putNextEntry(new ZipEntry("config/" + name));
+                                while ((len = in.read(buf)) > 0) {
+                                    zip.write(buf, 0, len);
+                                }
+                            }
+
+                            int percentage = zippedAmount * 100 / totalAmount;
+                            utils.setProgress("Zipping files...", percentage);
+                        } else {
+                            zipConfigFolder(zippedAmount, totalAmount, zip, fileName);
+                        }
+                    }
+                }
+            }
             if (hasVersion) {
                 File[] versionData = version.listFiles();
                 if (versionData != null) {
@@ -177,5 +209,39 @@ public final class CopyFile implements Runnable {
 
     public final boolean isFinished() {
         return finished;
+    }
+
+    /**
+     * Zip folder main content
+     *
+     * @param zippedAmount the amount of files zipped
+     * @param totalAmount the amount of files that should be zipped
+     * @param zip the zip file
+     * @param mainFolder the main folder to read from
+     */
+    private void zipConfigFolder(int zippedAmount, int totalAmount, ZipOutputStream zip, File mainFolder) throws Throwable {
+        File[] files = mainFolder.listFiles();
+        if (files != null) {
+            for (File fileName : files) {
+                if (!fileName.isDirectory()) {
+                    zippedAmount++;
+                    byte[] buf = new byte[1024];
+                    int len;
+                    try (FileInputStream in = new FileInputStream(fileName)) {
+                        String name = fileName.getName();
+                        utils.setDebug(utils.rgbColor("Zipping file " + FilesUtilities.getPath(fileName), 125, 255, 195), zippedAmount == 1);
+                        zip.putNextEntry(new ZipEntry("config/" + FilesUtilities.constructFolder("config", mainFolder) + "/" + name));
+                        while ((len = in.read(buf)) > 0) {
+                            zip.write(buf, 0, len);
+                        }
+                    }
+
+                    int percentage = zippedAmount * 100 / totalAmount;
+                    utils.setProgress("Zipping files...", percentage);
+                } else {
+                    zipConfigFolder(zippedAmount, totalAmount, zip, fileName);
+                }
+            }
+        }
     }
 }

@@ -5,9 +5,11 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.intellijthemes.FlatDarkPurpleIJTheme;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.*;
+import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Downloader;
+import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Installer;
+import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.ListMods;
+import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
-import ml.karmaconfigs.ModPackUpdater.VersionChecker.Checker;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -16,8 +18,11 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.MouseInputAdapter;
 import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -27,9 +32,9 @@ import java.util.TimerTask;
 public class MainFrame {
 
     private static boolean shift = false;
-    private static JFrame cFrame;
-
     public static String version = MainFrame.class.getPackage().getImplementationVersion();
+
+    private static JFrame cFrame;
 
     public static JComboBox<String> modpacks = new JComboBox<>(Modpack.listing.modpacks());
 
@@ -495,8 +500,8 @@ public class MainFrame {
                         case "EMPTY":
                             utils.setDebug(utils.rgbColor("Modpack " + modpack.getName() + " mod list is empty", 220, 100, 100), true);
                             break;
-                        case "ALREADY":
-                            utils.setDebug(utils.rgbColor("The modpack " + modpack.getName() + " is already installed, check hard install to force the install", 220, 100, 100), true);
+                        case "DOWNLOAD_NEED":
+                            utils.setDebug(utils.rgbColor("The modpack " + modpack.getName() + " needs to be downloaded", 220, 100, 100), true);
                             break;
                         default:
                             utils.setDebug(utils.rgbColor("Unexpected install result: " + result, 220, 100, 100), true);
@@ -537,6 +542,12 @@ public class MainFrame {
 
             if (cFrame == null) {
                 cFrame = new JFrame();
+
+                try {
+                    cFrame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
 
                 cFrame.setPreferredSize(new Dimension(800, 800));
                 cFrame.setTitle("Choose modpack downloads dest dir");
@@ -711,15 +722,7 @@ public class MainFrame {
             e.printStackTrace();
         }
 
-        if (new Config().checkVersions()) {
-            try {
-                new Checker(version).showVersion();
-            } catch (Throwable e) {
-                new MainFrame().initFrame();
-            }
-        } else {
-            new MainFrame().initFrame();
-        }
+        new MainFrame().initFrame();
 
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {

@@ -27,6 +27,41 @@ public interface FilesUtilities {
         return "N/A";
     }
 
+    static String constructFolder(String identifier, File file) {
+        String dir = FilesUtilities.getPath(file);
+
+        StringBuilder builder = new StringBuilder();
+        dir = dir.replace("/", "_");
+        String[] dirData = dir.split("_");
+        boolean adding = false;
+        for (int i = 0; i < dirData.length; i++) {
+            String folder = dirData[i];
+            if (folder.equals(identifier)) {
+                adding = true;
+            }
+            if (i != dirData.length - 1) {
+                if (adding) {
+                    if (!folder.equals(identifier)) {
+                        if (!folder.contains(".cfg") && !folder.contains(".properties")) {
+                            builder.append(folder).append("/");
+                        } else {
+                            builder.append(folder);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                if (adding) {
+                    if (!folder.equals("identifier")) {
+                        builder.append(folder);
+                    }
+                }
+            }
+        }
+
+        return builder.toString();
+    }
+
     static File getUpdaterDir() {
         if (Utils.os.getOS().equals("Windows")) {
             return new File(System.getenv("APPDATA") + "/ModPackUpdater");

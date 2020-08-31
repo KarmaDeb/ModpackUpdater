@@ -1,6 +1,7 @@
 package ml.karmaconfigs.ModPackUpdater.Utils.Files;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashSet;
 
 public final class SelectiveSelection {
@@ -9,6 +10,10 @@ public final class SelectiveSelection {
 
     public final void addSelectedFile(File file) {
         selectedFiles.add(file);
+    }
+
+    public final void addSelectedFile(Collection<File> files)  {
+        selectedFiles.addAll(files);
     }
 
     public final boolean isSelectiveFile(File file) {

@@ -202,7 +202,7 @@ public final class CreateFrame {
 
                 try {
                     assert loaderVersion != null;
-                    utils.setupCreator(urlDir, name.getText(), loaderVersion.toString(), ListVersions.listing.getRealVersion(loaderVersion.toString()), createAsZip.isSelected(), includeShaders.isSelected(), includeTextures.isSelected(), unzipDebug.isSelected());
+                    utils.setupCreator(urlDir, name.getText(), loaderVersion.toString(), ListVersions.listing.getRealVersion(loaderVersion.toString()), createAsZip.isSelected(), includeShaders.isSelected(), includeTextures.isSelected(), true, unzipDebug.isSelected());
                     Thread creator = new Thread(utils, "Creating");
                     creator.start();
                 } catch (Throwable ex) {

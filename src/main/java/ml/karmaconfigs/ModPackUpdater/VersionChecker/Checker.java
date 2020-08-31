@@ -1,6 +1,5 @@
 package ml.karmaconfigs.ModPackUpdater.VersionChecker;
 
-import lombok.SneakyThrows;
 import ml.karmaconfigs.ModPackUpdater.MainFrame;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
 

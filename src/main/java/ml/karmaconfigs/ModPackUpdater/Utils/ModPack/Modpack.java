@@ -152,6 +152,10 @@ public final class Modpack {
         return file.getBoolean("TEXTURES", false);
     }
 
+    public final boolean hasConfigs() {
+        return file.getBoolean("CONFIGS", false);
+    }
+
     /**
      * Check if the modpack exists
      *

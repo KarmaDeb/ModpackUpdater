@@ -134,6 +134,10 @@ public final class Config {
         return val;
     }
 
+    public final void setRunningId(String id) {
+        write("RUNTIME", id);
+    }
+
     public final void saveTheme(String theme) {
         //System.out.printInt("Saved theme");
         write("THEME", theme);
@@ -185,6 +189,10 @@ public final class Config {
     public final void saveMcDownloadDir(File mcFolder) {
         //System.out.printInt("Saved mc download folder")
         write("DOWNLOAD_DIR", FilesUtilities.getPath(mcFolder));
+    }
+
+    public final String getRuntime() {
+        return get("RUNTIME", null);
     }
 
     public final String getTheme() {

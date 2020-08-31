@@ -112,9 +112,10 @@ public final class Utils extends MainFrame implements Runnable {
     private static boolean asZip = false;
     private static boolean includeShaders = false;
     private static boolean includeTextures = false;
+    private static boolean includeConfigs = false;
     private static boolean enableDebug = false;
 
-    public final void setupCreator(String baseUrl, String modpackName, String loaderVersion, String realVersion, boolean zip, boolean withShaders, boolean withTextures, boolean debug) {
+    public final void setupCreator(String baseUrl, String modpackName, String loaderVersion, String realVersion, boolean zip, boolean withShaders, boolean withTextures, boolean configs, boolean debug) {
         baseURL = baseUrl;
         name = modpackName;
         version = loaderVersion;
@@ -122,6 +123,7 @@ public final class Utils extends MainFrame implements Runnable {
         asZip = zip;
         includeShaders = withShaders;
         includeTextures = withTextures;
+        includeConfigs = configs;
         enableDebug = debug;
     }
 
@@ -190,6 +192,10 @@ public final class Utils extends MainFrame implements Runnable {
                     if (includeShaders) {
                         includeShaders = copyShaderPacks(modpack);
                     }
+                    if (includeConfigs) {
+                        includeConfigs = copyConfigs(modpack);
+                    }
+
                     File vFile = null;
                     if (version != null && !version.isEmpty() && new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).exists()) {
                         vFile = new File(FilesUtilities.getMinecraftDir() + "/versions/" + version);
@@ -211,7 +217,7 @@ public final class Utils extends MainFrame implements Runnable {
                     }
 
                     if (asZip) {
-                        copy = new CopyFile(vFile, modpack, includeTextures, includeShaders, enableDebug);
+                        copy = new CopyFile(vFile, modpack, includeTextures, includeShaders, includeConfigs, enableDebug);
                         Thread thread = new Thread(copy, "Zipping");
                         thread.start();
                     }
@@ -234,6 +240,7 @@ public final class Utils extends MainFrame implements Runnable {
                 file.write("DOWNLOAD", baseURL + "/download.txt");
                 file.write("SHADERS", includeShaders);
                 file.write("TEXTURES", includeTextures);
+                file.write("CONFIGS", includeConfigs);
                 if (version != null && !version.isEmpty() && new File(FilesUtilities.getMinecraftDir() + "/versions/" + version).exists()) {
                     file.write("VERSION", version);
                     file.write("INHERIT", inheritVersion);
@@ -246,6 +253,7 @@ public final class Utils extends MainFrame implements Runnable {
                             }
                         }
                         file.write("V_URLS", vURLs);
+                        file.write("CFG_URLS", new ArrayList<>(getConfigFiles(baseURL, modpack)));
                     }
                 } else {
                     file.write("VERSION", "NULL");
@@ -352,6 +360,9 @@ public final class Utils extends MainFrame implements Runnable {
         JCheckBox textures = new JCheckBox("Resourcepacks");
         textures.setEnabled(false);
         textures.setSelected(modpack.hasTextures());
+        JCheckBox configs = new JCheckBox("Configs");
+        configs.setEnabled(false);
+        configs.setSelected(modpack.hasConfigs());
 
         infoScrollable = new JLabel();
         JScrollPane modList = new JScrollPane(infoScrollable);
@@ -373,7 +384,11 @@ public final class Utils extends MainFrame implements Runnable {
 
         JSplitPane textualInfo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, nameAndVersion, download);
         textualInfo.setEnabled(false);
-        JSplitPane zipInfo = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, shaders, textures);
+        JSplitPane zipInfo1 = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, shaders, textures);
+        zipInfo1.setEnabled(false);
+        JSplitPane zipInfo2 = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, zipInfo1, configs);
+        zipInfo2.setEnabled(false);
+        JSplitPane zipInfo = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, zipInfo2, new JPanel());
         zipInfo.setEnabled(false);
         JSplitPane finalInfo = new JSplitPane(JSplitPane.VERTICAL_SPLIT, textualInfo, zipInfo);
         finalInfo.setEnabled(false);
@@ -775,5 +790,131 @@ public final class Utils extends MainFrame implements Runnable {
             log(e);
         }
         return false;
+    }
+
+    static int configsAmount = 0;
+    static HashMap<String, String> debugData = new HashMap<>();
+
+    @SneakyThrows
+    private boolean copyConfigs(Modpack modpack) {
+        try {
+            configsAmount = 0;
+            debugData.clear();
+            File inConfig = new File(FilesUtilities.getModpackUploadDir(modpack) + "/config");
+            if (inConfig.exists() && inConfig.delete()) {
+                System.out.println("Executed");
+            }
+
+            setDebug(rgbColor("Looking for mod configs...", 155, 240, 175), true);
+            File configFolder = new File(mcFolder + "/config");
+            if (configFolder.exists()) {
+                File[] configs = configFolder.listFiles();
+                if (configs != null && !Arrays.asList(configs).isEmpty()) {
+                    for (File config : configs) {
+                        if (config.isDirectory()) {
+                            copyConfigsFolder(modpack, config);
+                        } else if (config.isFile()) {
+                            configsAmount++;
+                            File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/config");
+                            if (!destDir.exists() && destDir.mkdirs()) {
+                                System.out.println("Executed");
+                            }
+                            FileUtils.copyFileToDirectory(config, destDir);
+                            debugData.put("Detected mod config " + FilesUtilities.getPath(config), "Config file " + config.getName() + " have been added to modpack.zip");
+                        }
+                    }
+
+                    setDebug(rgbColor(debugData, 100, 100, 255, 155, 0, 155), true);
+                    setDebug(rgbColor("Detected a total of " + configsAmount + " config files", 120, 200, 155), true);
+                    return true;
+                }
+            }
+        } catch (Throwable e) {
+            log(e);
+        }
+        return false;
+    }
+
+    /**
+     * Copy configs folder
+     */
+    private void copyConfigsFolder(Modpack modpack, File mainFolder) {
+        try {
+            File[] inConfigFiles = mainFolder.listFiles();
+
+            if (inConfigFiles != null) {
+                for (File config : inConfigFiles) {
+                    if (config.isDirectory()) {
+                        copyConfigsFolder(modpack, config);
+                    } else {
+                        if (Downloader.isConfig(config)) {
+                            configsAmount++;
+                            File destDir = new File(FilesUtilities.getModpackUploadDir(modpack) + "/config/" + FilesUtilities.constructFolder("config", config).replace("/" + config.getName(), ""));
+                            if (!destDir.exists() && destDir.mkdirs()) {
+                                System.out.println("Executed");
+                            }
+                            FileUtils.copyFileToDirectory(config, destDir);
+                            debugData.put("Detected mod config " + FilesUtilities.getPath(config), "Config file " + config.getName() + " have been added to modpack.zip");
+                        }
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            log(e);
+        }
+    }
+
+    /**
+     * Get the config files directories in an arraylist
+     *
+     * @return an arraylist
+     */
+    private HashSet<String> getConfigFiles(String baseURL, Modpack modpack) {
+        HashSet<String> configs = new HashSet<>();
+
+        File[] configFiles = new File(FilesUtilities.getModpackUploadDir(modpack) + "/config").listFiles();
+
+        if (configFiles != null) {
+            for (File file : configFiles) {
+                if (!file.isDirectory()) {
+                    if (Downloader.isConfig(file)) {
+                        configs.add(baseURL + "/download/config/" + file.getName() + "=" + file.getName());
+                    }
+                } else {
+                    configs.addAll(getConfigFilesFromDir(baseURL, file, configs));
+                }
+            }
+        }
+
+        return configs;
+    }
+
+    /**
+     * Get the config files from directories in an arraylist
+     *
+     * @param baseURL the base download url
+     * @param mainFolder the main config folder
+     * @param originalList the original config file list
+     */
+    private HashSet<String> getConfigFilesFromDir(String baseURL, File mainFolder, HashSet<String> originalList) {
+        try {
+            File[] inConfigFiles = mainFolder.listFiles();
+
+            if (inConfigFiles != null) {
+                for (File config : inConfigFiles) {
+                    if (config.isDirectory()) {
+                        getConfigFilesFromDir(baseURL, config, originalList);
+                    } else {
+                        if (Downloader.isConfig(config)) {
+                            originalList.add(baseURL + "/download/config/" + FilesUtilities.constructFolder("config", config) + "=" + FilesUtilities.constructFolder("config", config));
+                        }
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            log(e);
+        }
+
+        return originalList;
     }
 }
