@@ -10,6 +10,7 @@ import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Installer;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.ListMods;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
 import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.ModPackUpdater.VersionChecker.Changelog;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -23,16 +24,18 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainFrame {
 
     private static boolean shift = false;
-    public static String version = MainFrame.class.getPackage().getImplementationVersion();
+    public static String version = "${version}";
 
     private static JFrame cFrame;
 
@@ -49,7 +52,7 @@ public class MainFrame {
 
     public static JProgressBar bar;
 
-    public static JButton launchPane;
+    public static JButton refreshChangelog;
     public static JButton chooseFolder;
 
     private static JTextArea dlURL;
@@ -84,11 +87,7 @@ public class MainFrame {
         bar.add(barLabel);
         bar.setValue(0);
 
-        /*
-        Nobody should use "System default" since it looks pretty bad and honestly, it works really slow :)
-        Should I remove it in a future version?
-        */
-        JComboBox<String> theme = new JComboBox<>(new String[]{"Light", "Dark", "Dark 2", "System default"});
+        JComboBox<String> theme = new JComboBox<>(new String[]{"Light", "Dark", "Dark 2"});
         theme.setSelectedItem(FilesUtilities.getConfig.getTheme());
 
         //Check boxes
@@ -104,7 +103,7 @@ public class MainFrame {
         JButton install = new JButton("Install modpack");
         JButton list = new JButton("List mods");
         JButton createPanel = new JButton("Creator panel");
-        launchPane = new JButton("Launcher panel");
+        refreshChangelog = new JButton("Refresh version info");
         chooseFolder = new JButton("MC download folder");
         JButton exportDebug = new JButton("Export debug");
 
@@ -119,11 +118,13 @@ public class MainFrame {
 
         //Labels
         bPane = new JLabel();
+        JLabel cPane = new JLabel();
         JLabel themeText = new JLabel("Theme");
         JLabel packText = new JLabel("Modpack");
 
         //Scroll panes
         jsp = new JScrollPane(bPane);
+        JScrollPane csp = new JScrollPane(cPane);
 
         //Split panes
         JSplitPane installSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, install, hardInstall);
@@ -145,7 +146,7 @@ public class MainFrame {
         JSplitPane exportUrl = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, dlURL, exportDebug);
         exportUrl.setDividerLocation(700);
 
-        JSplitPane left = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionTwoSplitter, new JPanel());
+        JSplitPane left = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionTwoSplitter, csp);
         JSplitPane right = new JSplitPane(JSplitPane.VERTICAL_SPLIT, exportUrl, jsp);
 
         JSplitPane barSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
@@ -179,7 +180,7 @@ public class MainFrame {
 
             //Sync the boxes size
             {
-                syncSize(installSplit, download, install, list, createPanel, theme, modpacks, launchPane, chooseFolder);
+                syncSize(installSplit, download, install, list, createPanel, theme, modpacks, refreshChangelog, chooseFolder);
             }
 
             { //Panels options
@@ -188,20 +189,21 @@ public class MainFrame {
                 managerPanel.add(manager);
                 themePane.add(themeLabel);
                 modpackPane.add(modpackLabel);
-                launcherPanel.add(launchPane);
+                launcherPanel.add(refreshChangelog);
                 chooserPanel.add(chooseFolder);
+                try {
+                    Changelog changelog = new Changelog();
+                    cPane.setText(changelog.toString());
+                } catch (Throwable e) {
+                    utils.log(e);
+                }
             }
         }
 
         utils.setDebug(utils.rgbColor("Debug pane", 125, 255, 195), false);
 
-        if (FilesUtilities.getConfig.getTheme().equals("System default")) {
-            bPane.setOpaque(true);
-            bPane.setBackground(Color.GRAY);
-        } else {
-            bPane.setOpaque(true);
-            bPane.setBackground(Color.DARK_GRAY);
-        }
+        bPane.setOpaque(true);
+        bPane.setBackground(Color.DARK_GRAY);
 
         frame.setPreferredSize(new Dimension(1280, 720));
         frame.setTitle("ModPack updater by KarmaDev " + version);
@@ -255,14 +257,6 @@ public class MainFrame {
                                 UIManager.setLookAndFeel(FlatDarkLaf.class.getCanonicalName());
                                 if (Utils.info != null && Utils.infoScrollable != null) {
                                     Utils.infoScrollable.setBackground(Color.DARK_GRAY);
-                                }
-                                break;
-                            case "System default":
-                                bPane.setOpaque(true);
-                                bPane.setBackground(Color.GRAY);
-                                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-                                if (Utils.info != null && Utils.infoScrollable != null) {
-                                    Utils.infoScrollable.setBackground(Color.GRAY);
                                 }
                                 break;
                             case "Dark 2":
@@ -521,17 +515,13 @@ public class MainFrame {
 
         checkUpdates.addActionListener(e -> new Config().saveVersionOptions(checkUpdates.isSelected()));
 
-        launchPane.addActionListener(e -> {
-            /*
+        refreshChangelog.addActionListener(e -> {
             try {
-                Modpack modpack = new Modpack(utils.getCurrentModpack());
-                LaunchFrame lFrame = new LaunchFrame(modpack);
-                lFrame.display();
+                Changelog changelog = new Changelog();
+                cPane.setText(changelog.toString());
             } catch (Throwable ex) {
                 utils.log(ex);
-            }*/
-
-            utils.setDebug(utils.rgbColor("This function is under maintenance", 220, 100, 100), true);
+            }
         });
 
         chooseFolder.addActionListener(ee -> {
@@ -596,14 +586,8 @@ public class MainFrame {
                 if (!debug.exists() && debug.createNewFile()) {
                     System.out.println("Executed");
                 }
-                String color;
-                String rgb;
-                if (FilesUtilities.getConfig.getTheme().equals("System default")) {
-                    color = "Grey";
-                } else {
-                    color = "DarkGrey";
-                }
-                rgb  = "( R:" + bPane.getBackground().getRed() + ", B:" + bPane.getBackground().getBlue() + ", G:" + bPane.getBackground().getGreen() + " )";
+                String color = "DarkGrey";
+                String rgb = "( R:" + bPane.getBackground().getRed() + ", B:" + bPane.getBackground().getBlue() + ", G:" + bPane.getBackground().getGreen() + " )";
 
                 String totalRGB = bPane.getBackground().getRed() + ", " + bPane.getBackground().getBlue() + ", " + bPane.getBackground().getGreen();
 
@@ -620,16 +604,6 @@ public class MainFrame {
                 utils.log(ex);
             }
         });
-
-        /*frame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                if (Launch.process != null && Launch.process.isAlive()) {
-                    utils.setDebug(utils.rgbColor("Closing minecraft...", 155, 240, 175), true);
-                    Launch.process.destroy();
-                }
-            }
-        });*/
     }
 
     public static void restartModpacksListeners() {
@@ -693,6 +667,15 @@ public class MainFrame {
     }
 
     public static void main(String[] args) {
+        try {
+            InputStream props = (MainFrame.class).getResourceAsStream("/data.properties");
+            Properties properties = new Properties();
+            properties.load(props);
+            version = properties.getProperty("version");
+        } catch (Throwable e) {
+            version = "0";
+        }
+
         FlatLightLaf.install();
         FlatDarkLaf.install();
         FlatDarkPurpleIJTheme.install();
@@ -702,10 +685,6 @@ public class MainFrame {
 
             String finalTheme;
             switch (themeName) {
-                case "Light":
-                    finalTheme = "Light";
-                    UIManager.setLookAndFeel(FlatLightLaf.class.getCanonicalName());
-                    break;
                 case "Dark":
                     finalTheme = "Dark";
                     UIManager.setLookAndFeel(FlatDarkLaf.class.getCanonicalName());
@@ -715,8 +694,8 @@ public class MainFrame {
                     UIManager.setLookAndFeel(FlatDarkPurpleIJTheme.class.getCanonicalName());
                     break;
                 default:
-                    finalTheme = "System default";
-                    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                    finalTheme = "Light";
+                    UIManager.setLookAndFeel(FlatLightLaf.class.getCanonicalName());
                     break;
             }
 
