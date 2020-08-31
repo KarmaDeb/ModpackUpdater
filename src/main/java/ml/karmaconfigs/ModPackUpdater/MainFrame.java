@@ -522,13 +522,16 @@ public class MainFrame {
         checkUpdates.addActionListener(e -> new Config().saveVersionOptions(checkUpdates.isSelected()));
 
         launchPane.addActionListener(e -> {
+            /*
             try {
                 Modpack modpack = new Modpack(utils.getCurrentModpack());
                 LaunchFrame lFrame = new LaunchFrame(modpack);
                 lFrame.display();
             } catch (Throwable ex) {
                 utils.log(ex);
-            }
+            }*/
+
+            utils.setDebug(utils.rgbColor("This function is under maintenance", 220, 100, 100), true);
         });
 
         chooseFolder.addActionListener(ee -> {
