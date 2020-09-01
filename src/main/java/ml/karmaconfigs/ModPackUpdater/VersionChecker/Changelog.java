@@ -58,11 +58,12 @@ public final class Changelog {
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    if (back == 1) {
+                    back--;
+                    if (back == 0) {
                         available = true;
+                        back = 10;
                         timer.cancel();
                     }
-                    back--;
                 }
             }, 0, TimeUnit.SECONDS.toMillis(1));
             available = false;

@@ -320,12 +320,11 @@ public final class Utils extends MainFrame implements Runnable {
     }
 
     public final void setProgress(String title, int progress) {
+        if (progress == 1) {
+            progress = 0;
+        }
         bar.setValue(progress);
-        barLabel.setText(title + " [ " + progress + "% ]");
-
-        bar.setString(title + "[ " + progress + "% ]");
-        bar.setStringPainted(true);
-        bar.setValue(progress);
+        barLabel.setText("<html><div><h3>" + title + "</h3></div></html>");
     }
 
     public static JFrame info;

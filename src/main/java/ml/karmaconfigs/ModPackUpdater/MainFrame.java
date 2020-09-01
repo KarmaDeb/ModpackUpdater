@@ -14,13 +14,14 @@ import ml.karmaconfigs.ModPackUpdater.VersionChecker.Changelog;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.MouseInputAdapter;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -29,6 +30,7 @@ import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -76,15 +78,13 @@ public class MainFrame {
         }
 
         bar = new JProgressBar();
-        bar.setPreferredSize(new Dimension(frame.getWidth(), 30));
+        bar.setPreferredSize(new Dimension(frame.getWidth(), 1));
         barLabel = new JLabel();
 
         barLabel.setHorizontalAlignment(JLabel.CENTER);
         barLabel.setVerticalAlignment(JLabel.CENTER);
-        barLabel.setBorder(new EmptyBorder(15, 15, 15, 15));
+        barLabel.setText("<html><div><h3>Download status bar</h3></div></html>");
 
-        barLabel.setText("Download status bar");
-        bar.add(barLabel);
         bar.setValue(0);
 
         JComboBox<String> theme = new JComboBox<>(new String[]{"Light", "Dark", "Dark 2"});
@@ -150,10 +150,12 @@ public class MainFrame {
         JSplitPane right = new JSplitPane(JSplitPane.VERTICAL_SPLIT, exportUrl, jsp);
 
         JSplitPane barSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-        JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, bar, barSplitter);
+        JSplitPane barStatusSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, bar, barLabel);
+        JSplitPane lineSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, barStatusSplitter, new Line());
+        JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, lineSplit, barSplitter);
 
         //Disable the split panes resizing...
-        disable(installSplit, options, manager, leftTop, themeLabel, modpackLabel, managerSplitterOne, managerSplitterTwo, managerSplitterThree, managerSplitter, optionOneSplitter, optionTwoSplitter, left, right, barSplitter, splitter);
+        disable(installSplit, options, manager, leftTop, themeLabel, modpackLabel, managerSplitterOne, managerSplitterTwo, managerSplitterThree, managerSplitter, optionOneSplitter, optionTwoSplitter, left, right, barSplitter, barStatusSplitter, lineSplit, splitter);
 
         //Make all the panels work and display the correct way
         //Yes, I use brackets to separate it '-'
@@ -168,9 +170,14 @@ public class MainFrame {
                 //This actually sucks...
                 themeLabel.setDividerSize(19);
                 managerSplitterTwo.setDividerSize(-5);
+                barStatusSplitter.setDividerSize(-4);
 
                 //Grouping left-bottom options
                 managerSplitter.setDividerSize(-5);
+
+                //Dividing progress bar from the rest
+                //of the panel
+                splitter.setDividerSize(25);
             }
 
             //JCheckBoxes options sync with config
@@ -215,6 +222,47 @@ public class MainFrame {
         Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
         frame.setLocation(dim.width/2-frame.getSize().width/2, dim.height/2-frame.getSize().height/2);
         frame.setMinimumSize(new Dimension(800, 800));
+
+        frame.addWindowListener(new WindowListener() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+                for (Thread thread : threadSet) {
+                    if (thread.getState()==Thread.State.RUNNABLE)
+                        thread.interrupt();
+                }
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowActivated(WindowEvent e) {
+
+            }
+
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+
+            }
+        });
 
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(ke -> {
             synchronized (MainFrame.class) {
@@ -724,5 +772,13 @@ public class MainFrame {
                 });
             }
         }, 0, 1);
+    }
+}
+
+class Line extends JPanel {
+
+    public void paint(Graphics g){
+        g.setColor(Color.GREEN);
+        g.drawLine(25, 8, 1255, 8);
     }
 }
