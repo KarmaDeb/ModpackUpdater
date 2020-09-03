@@ -1,8 +1,9 @@
 package ml.karmaconfigs.ModPackUpdater;
 
+import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
-import com.formdev.flatlaf.intellijthemes.FlatDarkPurpleIJTheme;
+import com.formdev.flatlaf.intellijthemes.FlatAllIJThemes;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
 import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Downloader;
@@ -22,6 +23,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.awt.geom.Line2D;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -29,14 +31,13 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.util.Properties;
-import java.util.Set;
 import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 public class MainFrame {
 
     private static boolean shift = false;
+    private static final HashMap<String, String> themeData = new HashMap<>();
     public static String version = "${version}";
 
     private static JFrame cFrame;
@@ -44,6 +45,8 @@ public class MainFrame {
     public static JComboBox<String> modpacks = new JComboBox<>(Modpack.listing.modpacks());
 
     public static JFrame frame;
+
+    public static JPanel line = new Line();
 
     public static JLabel bPane;
     public static JLabel barLabel;
@@ -87,7 +90,7 @@ public class MainFrame {
 
         bar.setValue(0);
 
-        JComboBox<String> theme = new JComboBox<>(new String[]{"Light", "Dark", "Dark 2"});
+        JComboBox<String> theme = new JComboBox<>(getThemes());
         theme.setSelectedItem(FilesUtilities.getConfig.getTheme());
 
         //Check boxes
@@ -151,7 +154,7 @@ public class MainFrame {
 
         JSplitPane barSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         JSplitPane barStatusSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, bar, barLabel);
-        JSplitPane lineSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, barStatusSplitter, new Line());
+        JSplitPane lineSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, barStatusSplitter, line);
         JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, lineSplit, barSplitter);
 
         //Disable the split panes resizing...
@@ -207,7 +210,8 @@ public class MainFrame {
             }
         }
 
-        utils.setDebug(utils.rgbColor("Debug pane", 125, 255, 195), false);
+        int themeAmount = theme.getItemCount() - 1;
+        utils.setDebug(utils.rgbColor("Loaded " + themeAmount + " themes", 125, 255, 195), false);
 
         bPane.setOpaque(true);
         bPane.setBackground(Color.DARK_GRAY);
@@ -289,55 +293,29 @@ public class MainFrame {
                 if (theme.getSelectedItem() != null) {
                     String themeName = theme.getSelectedItem().toString();
 
-                    if (!oldTheme.equals(themeName)) {
-                        switch (themeName) {
-                            case "Light":
-                                bPane.setOpaque(true);
-                                bPane.setBackground(Color.DARK_GRAY);
-                                if (Utils.info != null && Utils.infoScrollable != null) {
-                                    Utils.infoScrollable.setBackground(Color.DARK_GRAY);
-                                }
-                                UIManager.setLookAndFeel(FlatLightLaf.class.getCanonicalName());
-                                break;
-                            case "Dark":
-                                bPane.setOpaque(true);
-                                bPane.setBackground(Color.DARK_GRAY);
-                                UIManager.setLookAndFeel(FlatDarkLaf.class.getCanonicalName());
-                                if (Utils.info != null && Utils.infoScrollable != null) {
-                                    Utils.infoScrollable.setBackground(Color.DARK_GRAY);
-                                }
-                                break;
-                            case "Dark 2":
-                                bPane.setOpaque(true);
-                                bPane.setBackground(Color.DARK_GRAY);
-                                UIManager.setLookAndFeel(FlatDarkPurpleIJTheme.class.getCanonicalName());
-                                if (Utils.info != null && Utils.infoScrollable != null) {
-                                    Utils.infoScrollable.setBackground(Color.DARK_GRAY);
-                                }
-                                break;
-                            default:
-                                utils.setDebug(utils.rgbColor("Failed to change theme", 255, 0, 0), true);
-                                break;
-                        }
+                    if (!oldTheme.equals(themeName) && !themeName.equals("Themes by FlatLaf themes")) {
+                        UIManager.setLookAndFeel(themeData.get(themeName));
                         FilesUtilities.getConfig.saveTheme(themeName);
                     } else {
-                        utils.setDebug(utils.rgbColor("Theme name is the same, nothing changed", 255, 0, 0), true);
+                        if (!themeName.equals("Themes by FlatLaf themes")) {
+                            utils.setDebug(utils.rgbColor("Selected theme is the same as actual, nothing changed", 220, 100, 100), true);
+                        } else {
+                            if (!oldTheme.equals("Themes by FlatLaf themes")) {
+                                theme.setSelectedItem(oldTheme);
+                            } else {
+                                UIManager.setLookAndFeel(themeData.get("Light"));
+                                theme.setSelectedItem("Light");
+                            }
+                            utils.setDebug(utils.rgbColor("https://github.com/JFormDesigner/FlatLaf", 120, 100, 100), true);
+                            utils.setDebug(utils.rgbColor("https://www.formdev.com/flatlaf/", 120, 100, 100), true);
+                        }
                     }
                 }
 
-                SwingUtilities.invokeLater(() -> {
-                    SwingUtilities.updateComponentTreeUI(frame);
-                    if (CreateFrame.creatorFrame != null) {
-                        SwingUtilities.updateComponentTreeUI(CreateFrame.creatorFrame);
-                    }
-                    if (Utils.info != null) {
-                        SwingUtilities.updateComponentTreeUI(Utils.info);
-                    }
-                    SwingUtilities.updateComponentTreeUI(CreateFrame.chooser);
-                });
+                utils.reloadTool();
             } catch (Throwable ex) {
                 utils.log(ex);
-                utils.setDebug(utils.rgbColor("Failed to change theme", 255, 0, 0), true);
+                utils.setDebug(utils.rgbColor("Failed to change theme", 220, 100, 100), true);
                 theme.setSelectedItem(oldTheme);
                 FilesUtilities.getConfig.saveTheme(oldTheme);
             }
@@ -715,6 +693,7 @@ public class MainFrame {
     }
 
     public static void main(String[] args) {
+        getThemes();
         try {
             InputStream props = (MainFrame.class).getResourceAsStream("/data.properties");
             Properties properties = new Properties();
@@ -724,30 +703,12 @@ public class MainFrame {
             version = "0";
         }
 
-        FlatLightLaf.install();
-        FlatDarkLaf.install();
-        FlatDarkPurpleIJTheme.install();
-
         try {
             String themeName = new Config().getTheme();
 
-            String finalTheme;
-            switch (themeName) {
-                case "Dark":
-                    finalTheme = "Dark";
-                    UIManager.setLookAndFeel(FlatDarkLaf.class.getCanonicalName());
-                    break;
-                case "Dark 2":
-                    finalTheme = "Dark 2";
-                    UIManager.setLookAndFeel(FlatDarkPurpleIJTheme.class.getCanonicalName());
-                    break;
-                default:
-                    finalTheme = "Light";
-                    UIManager.setLookAndFeel(FlatLightLaf.class.getCanonicalName());
-                    break;
-            }
-
-            new Config().saveTheme(finalTheme);
+            UIManager.setLookAndFeel(themeData.getOrDefault(themeName
+                    .replace("Dark 2", "Dark purple")
+                    .replace("Themes by FlatLaf themes", "Light"), "Dark"));
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -773,12 +734,44 @@ public class MainFrame {
             }
         }, 0, 1);
     }
+
+    private static String[] getThemes() {
+        ArrayList<String> names = new ArrayList<>();
+
+        names.add("Light");
+        themeData.put("Light", FlatLightLaf.class.getCanonicalName());
+        FlatLightLaf.install();
+        names.add("Dark");
+        themeData.put("Dark", FlatDarkLaf.class.getCanonicalName());
+        FlatDarkLaf.install();
+        names.add("Darcula");
+        themeData.put("Darcula", FlatDarculaLaf.class.getCanonicalName());
+        FlatDarculaLaf.install();
+
+        for (UIManager.LookAndFeelInfo info : FlatAllIJThemes.INFOS) {
+            UIManager.installLookAndFeel(info);
+            names.add(info.getName());
+            themeData.put(info.getName(), info.getClassName());
+        }
+
+        names.add("Themes by FlatLaf themes");
+
+        String[] namesArray = new String[names.size()];
+        for (int i = 0; i < names.size(); i++) {
+            namesArray[i] = names.get(i);
+        }
+
+        return namesArray;
+    }
 }
 
 class Line extends JPanel {
 
-    public void paint(Graphics g){
-        g.setColor(Color.GREEN);
-        g.drawLine(25, 8, 1255, 8);
+    public void paint(Graphics g) {
+        Graphics2D g2d = (Graphics2D) g;
+
+        g2d.setColor(Color.GRAY);
+        g2d.setStroke(new BasicStroke(2));
+        g2d.draw(new Line2D.Float(25, 8, 1255, 8));
     }
 }

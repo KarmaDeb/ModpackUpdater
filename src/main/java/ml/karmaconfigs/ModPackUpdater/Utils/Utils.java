@@ -1,6 +1,7 @@
 package ml.karmaconfigs.ModPackUpdater.Utils;
 
 import lombok.SneakyThrows;
+import ml.karmaconfigs.ModPackUpdater.CreateFrame;
 import ml.karmaconfigs.ModPackUpdater.MainFrame;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.CopyFile;
 import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
@@ -447,6 +448,54 @@ public final class Utils extends MainFrame implements Runnable {
         CustomFile file = new CustomFile(modpackInfo, true);
 
         file.write("CURRENT", modpack.getName());
+    }
+
+    /**
+     * Reload everything in the tool
+     */
+    public final void reloadTool() {
+        SwingUtilities.invokeLater(() -> {
+            SwingUtilities.updateComponentTreeUI(frame);
+            for (Component component : frame.getComponents()) {
+                if (component != null) {
+                    SwingUtilities.updateComponentTreeUI(component);
+                }
+            }
+
+            SwingUtilities.updateComponentTreeUI(CreateFrame.chooser);
+            for (Component component : CreateFrame.chooser.getComponents()) {
+                if (component != null) {
+                    SwingUtilities.updateComponentTreeUI(component);
+                }
+            }
+
+            if (CreateFrame.creatorFrame != null) {
+                SwingUtilities.updateComponentTreeUI(CreateFrame.creatorFrame);
+                for (Component component : CreateFrame.creatorFrame.getComponents()) {
+                    if (component != null) {
+                        SwingUtilities.updateComponentTreeUI(component);
+                    }
+                }
+            }
+
+            if (CreateFrame.errorFrame != null) {
+                SwingUtilities.updateComponentTreeUI(CreateFrame.errorFrame);
+                for (Component component : CreateFrame.errorFrame.getComponents()) {
+                    if (component != null) {
+                        SwingUtilities.updateComponentTreeUI(component);
+                    }
+                }
+            }
+
+            if (info != null) {
+                SwingUtilities.updateComponentTreeUI(info);
+                for (Component component : info.getComponents()) {
+                    if (component != null) {
+                        SwingUtilities.updateComponentTreeUI(component);
+                    }
+                }
+            }
+        });
     }
 
     public final boolean isOutdated(String url) {

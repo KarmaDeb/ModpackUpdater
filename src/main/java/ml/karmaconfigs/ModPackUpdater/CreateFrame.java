@@ -39,7 +39,7 @@ public final class CreateFrame {
     private static JCheckBox includeTextures;
     private static JCheckBox unzipDebug;
 
-    private static final JComboBox<String> version = new JComboBox<>();
+    public static final JComboBox<String> version = new JComboBox<>();
     private static String selected = "";
 
     private File mcFolder = FilesUtilities.getConfig.getMinecraftDir();
@@ -142,6 +142,7 @@ public final class CreateFrame {
 
     public void display() {
         if (version.getItemCount() > 0) {
+            utils.reloadTool();
             creatorFrame.setVisible(true);
 
             createAsZip.addActionListener(e -> {
