@@ -92,6 +92,14 @@ public class MainFrame {
 
         JComboBox<String> theme = new JComboBox<>(getThemes());
         theme.setSelectedItem(FilesUtilities.getConfig.getTheme());
+        for (int i = 0; i < theme.getItemCount(); i++) {
+            String name = theme.getItemAt(i);
+
+            if (Objects.equals(theme.getSelectedItem(), name)) {
+                theme.setSelectedIndex(i);
+                break;
+            }
+        }
 
         //Check boxes
         JCheckBox hardInstall = new JCheckBox("Force install/update");
@@ -693,7 +701,7 @@ public class MainFrame {
     }
 
     public static void main(String[] args) {
-        getThemes();
+        detectThemes();
         try {
             InputStream props = (MainFrame.class).getResourceAsStream("/data.properties");
             Properties properties = new Properties();
@@ -735,30 +743,28 @@ public class MainFrame {
         }, 0, 1);
     }
 
-    private static String[] getThemes() {
-        ArrayList<String> names = new ArrayList<>();
-
-        names.add("Light");
+    private static void detectThemes() {
         themeData.put("Light", FlatLightLaf.class.getCanonicalName());
         FlatLightLaf.install();
-        names.add("Dark");
         themeData.put("Dark", FlatDarkLaf.class.getCanonicalName());
         FlatDarkLaf.install();
-        names.add("Darcula");
         themeData.put("Darcula", FlatDarculaLaf.class.getCanonicalName());
         FlatDarculaLaf.install();
 
         for (UIManager.LookAndFeelInfo info : FlatAllIJThemes.INFOS) {
             UIManager.installLookAndFeel(info);
-            names.add(info.getName());
             themeData.put(info.getName(), info.getClassName());
         }
 
-        names.add("Themes by FlatLaf themes");
+        themeData.put("Themes by FlatLaf themes", FlatLightLaf.class.getCanonicalName());
+    }
 
-        String[] namesArray = new String[names.size()];
-        for (int i = 0; i < names.size(); i++) {
-            namesArray[i] = names.get(i);
+    private static String[] getThemes() {
+        String[] namesArray = new String[themeData.keySet().size()];
+        int index = 0;
+        for (String str : themeData.keySet()) {
+            namesArray[index] = str;
+            index++;
         }
 
         return namesArray;
