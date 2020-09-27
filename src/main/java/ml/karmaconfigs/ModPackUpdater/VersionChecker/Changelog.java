@@ -32,9 +32,7 @@ public final class Changelog {
             String word;
             List<String> lines = new ArrayList<>();
             while ((word = reader.readLine()) != null) {
-                if (!lines.contains(word)) {
-                    lines.add(word);
-                }
+                lines.add(word);
             }
 
             reader.close();

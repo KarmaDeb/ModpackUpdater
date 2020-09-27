@@ -422,6 +422,8 @@ public class MainFrame {
                 CreateFrame newFrame = new CreateFrame();
                 newFrame.display();
             } else {
+                CreateFrame.versioning.checkVersions();
+
                 if (!CreateFrame.creatorFrame.isVisible()) {
                     CreateFrame.creatorFrame.setVisible(true);
                 }
