@@ -138,6 +138,8 @@ public final class CreateFrame {
     }
 
     public void display() {
+        chooser.setSelectedFile(mcFolder);
+        chooser.setCurrentDirectory(mcFolder);
         versioning.checkVersions();
 
         utils.reloadTool();
@@ -168,16 +170,20 @@ public final class CreateFrame {
         unzipDebug.addActionListener(e -> FilesUtilities.getConfig.saveCreatorOptions(createAsZip.isSelected(), includeTextures.isSelected(), includeShaders.isSelected(), unzipDebug.isSelected()));
 
         chooser.addActionListener(e -> {
-            if (e.getActionCommand().contains("Approve")) {
+            if (e.getActionCommand().equals(JFileChooser.APPROVE_SELECTION)) {
+                boolean changed = false;
                 if (!chooser.getSelectedFile().equals(mcFolder)) {
+                    changed = true;
                     mcFolder = chooser.getSelectedFile();
                     utils.setDebug(utils.rgbColor("Changed minecraft directory to: " + FilesUtilities.getPath(mcFolder), 120, 200, 155), true);
                     FilesUtilities.getConfig.saveMinecraftDir(mcFolder);
-                } else {
-                    utils.setDebug(utils.rgbColor("Same minecraft directory selected, nothing changed", 110, 150, 150), false);
                 }
 
                 versioning.checkVersions();
+                utils.setDebug(utils.rgbColor("Re-checked for versions in the folder: " + FilesUtilities.getPath(chooser.getSelectedFile()), 120, 200, 155), !changed);
+
+                chooser.setCurrentDirectory(mcFolder);
+
                 utils.reloadTool();
             } else {
                 if (e.getActionCommand().equals(JFileChooser.CANCEL_SELECTION)) {
@@ -327,7 +333,7 @@ public final class CreateFrame {
 
             if (versions.size() > 0) {
                 createModPack.setEnabled(true);
-                chooserTitle.setText("<html><h1>Select your minecraft folder where /mods are located</h1></html>");
+                chooserTitle.setText("<html><h1>Yay, we detected " + version.getItemCount() + " mod loaders</h1></html>");
             } else {
                 createModPack.setEnabled(false);
                 chooserTitle.setText("<html><h1>No forge versions found in this folder, select your minecraft folder in where you have forge<h1></html>");
@@ -353,7 +359,6 @@ public final class CreateFrame {
 
 class ListVersions {
 
-
     public interface listing {
 
         @SneakyThrows
@@ -366,7 +371,7 @@ class ListVersions {
             if (versions != null && !Arrays.asList(versions).isEmpty()) {
                 for (File version : versions) {
                     String name = version.getName();
-                    if (name.contains("forge")) {
+                    if (name.contains("forge") || name.contains("Forge") || name.contains("liteloader") || name.contains("LiteLoader")) {
                         File json = new File(version, name + ".json");
                         if (json.exists()) {
                             FileReader reader = new FileReader(json);
@@ -374,7 +379,7 @@ class ListVersions {
                             JSONObject info = (JSONObject) jsonParser.parse(reader);
 
                             if (info.containsKey("id")) {
-                                if (info.get("id").toString().contains("forge")) {
+                                if (info.get("id").toString().contains("forge") || info.get("id").toString().contains("LiteLoader")) {
                                     names.add(name);
                                 }
                             }

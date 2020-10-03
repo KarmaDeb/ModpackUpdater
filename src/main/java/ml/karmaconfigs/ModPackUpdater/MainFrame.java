@@ -597,7 +597,7 @@ public class MainFrame {
             cFrame.setSize(new Dimension(800, 800));
 
             chooser.addActionListener(et -> {
-                if (et.getActionCommand().contains("Approve")) {
+                if (et.getActionCommand().equals(JFileChooser.APPROVE_SELECTION)) {
                     if (!chooser.getSelectedFile().equals(installFolder)) {
                         installFolder = chooser.getSelectedFile();
                         utils.setDebug(utils.rgbColor("Changed modpack download directory to: " + FilesUtilities.getPath(installFolder), 120, 200, 155), true);
@@ -606,6 +606,8 @@ public class MainFrame {
                     } else {
                         utils.setDebug(utils.rgbColor("Same modpack download directory selected, nothing changed", 110, 150, 150), false);
                     }
+
+                    chooser.setCurrentDirectory(installFolder);
                 } else {
                     if (et.getActionCommand().equals(JFileChooser.CANCEL_SELECTION)) {
                         cFrame.setVisible(false);
