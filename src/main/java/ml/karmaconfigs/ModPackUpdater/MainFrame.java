@@ -431,21 +431,68 @@ public class MainFrame {
             }
         }));
 
-        dlURL.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveDownloadURL(dlURL.getText());
-            }
+        //TODO Implement this into the actual code...
+        dlURL.addKeyListener(new KeyAdapter() {
+           @Override
+           public final void keyPressed(KeyEvent e) {
+               boolean isCopy = shift && e.getKeyCode() == KeyEvent.VK_C;
+               boolean isPaste = shift && e.getKeyCode() == KeyEvent.VK_V;
+               char character = e.getKeyChar(); 
+               
+               String letter = String.valueOf(character);
+               if (Character.isLetterOrDigit(character) 
+                   && letter.equals("/") 
+                   && letter.equals(".") 
+                   && letter.equals(":")
+                   && !isCopy 
+                   && !isPaste) {
+                    e.consume();   
+               }
+           }
+            
+           @Override
+           public final void keyTyped(KeyEvent e) {
+                boolean isPaste = shift && e.getKeyCode() == KeyEvent.VK_V;
+               
+               char charater = e.getKeyChar();
+               
+               String letter = String.valueOf(character);
+               if (Character.isLetterOrDigit(character) 
+                   && letter.equals("/") 
+                   && letter.equals(".") 
+                   && letter.equals(":")
+                   && !isCopy 
+                   && !isPaste) {
+                    e.consume();   
+               } else {
+                  SwingUtilities.invokeLater(() -> {
+                        if  (isPaste) {
+                            Clipboard clip = ToolKit.getDefaultToolKit().getSystemCliboard();
+                            //TODO Take the system clipboard...
+                            String data = (String) //System clipboard
 
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveDownloadURL(dlURL.getText());
-            }
+                            StringBuilder builder = new StringBuilder();
+                            for (int i = 0; i < data.length(); i++) {
+                                char character = data.charAt(i);
 
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                FilesUtilities.getConfig.saveDownloadURL(dlURL.getText());
-            }
+                                if (Character.isLetterOrDigit(character) 
+                                       && letter.equals("/") 
+                                       && letter.equals(".") 
+                                       && letter.equals(":")) {
+                                    builder.append(character);
+                                }
+                            }
+
+                            dlURL.setText(builder.toString());
+                            
+                            if (dlURL.getText().isEmpty())
+                                dlURL.setText("https://locahost.com/download.txt");
+                            
+                            FilesUtilities.getConfig.saveDownloadURL(dlURL.getText());
+                      }
+                  });
+               }
+           }
         });
 
         modpacks.addActionListener(e -> {
