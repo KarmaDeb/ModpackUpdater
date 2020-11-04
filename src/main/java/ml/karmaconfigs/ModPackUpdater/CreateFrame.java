@@ -1,10 +1,10 @@
-package ml.karmaconfigs.ModPackUpdater;
+package ml.karmaconfigs.modpackupdater;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.Config;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Modpack;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
@@ -23,29 +23,21 @@ import java.util.List;
 
 public final class CreateFrame {
 
+    public static final JFileChooser chooser = new JFileChooser();
+    public static final JComboBox<String> version = new JComboBox<>();
     private final static Utils utils = new Utils();
-
     private final static List<String> versions = new ArrayList<>();
-
+    private static final JLabel chooserTitle = new JLabel();
     public static JFrame creatorFrame;
     public static JFrame errorFrame;
-
-    public static final JFileChooser chooser = new JFileChooser();
-
     private static JTextArea url;
     private static JTextArea name;
-
     private static JButton createModPack;
     private static JButton openDownloadDir;
-
     private static JCheckBox createAsZip;
     private static JCheckBox includeShaders;
     private static JCheckBox includeTextures;
     private static JCheckBox unzipDebug;
-
-    private static final JLabel chooserTitle = new JLabel();
-
-    public static final JComboBox<String> version = new JComboBox<>();
     private static String selected = "";
 
     private File mcFolder = FilesUtilities.getConfig.getMinecraftDir();
@@ -317,6 +309,21 @@ public final class CreateFrame {
         version.addActionListener(e -> selected = String.valueOf(version.getSelectedItem()));
     }
 
+    private void disableResize(JSplitPane... panes) {
+        for (JSplitPane pane : panes) {
+            pane.setEnabled(false);
+        }
+    }
+
+    private boolean contains(String value) {
+        for (int i = 0; i < version.getItemCount(); i++) {
+            if (version.getItemAt(i).equals(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public interface versioning {
 
         static void checkVersions() {
@@ -339,21 +346,6 @@ public final class CreateFrame {
                 chooserTitle.setText("<html><h1>No forge versions found in this folder, select your minecraft folder in where you have forge<h1></html>");
             }
         }
-    }
-
-    private void disableResize(JSplitPane... panes) {
-        for (JSplitPane pane : panes) {
-            pane.setEnabled(false);
-        }
-    }
-
-    private boolean contains(String value) {
-        for (int i = 0; i < version.getItemCount(); i++) {
-            if (version.getItemAt(i).equals(value)) {
-                return true;
-            }
-        }
-        return false;
     }
 }
 
@@ -396,7 +388,7 @@ class ListVersions {
             return versionNames;
         }
 
-        static String getRealVersion(String version) throws Throwable  {
+        static String getRealVersion(String version) throws Throwable {
             Config config = new Config();
 
             File json = new File(config.getMinecraftDir() + "/versions/" + version + "/" + version + ".json");

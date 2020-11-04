@@ -1,8 +1,8 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Files;
+package ml.karmaconfigs.modpackupdater.utils.files;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Modpack;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,9 +18,8 @@ public final class CopyFile implements Runnable {
     private static boolean textures, shaders, configs;
 
     private final boolean debug;
-    private boolean finished = false;
-
     private final Utils utils = new Utils();
+    private boolean finished = false;
 
     public CopyFile(File loaderVersion, Modpack modpack, boolean textures, boolean shaders, boolean configs, boolean debug) {
         CopyFile.version = loaderVersion;
@@ -215,9 +214,9 @@ public final class CopyFile implements Runnable {
      * Zip folder main content
      *
      * @param zippedAmount the amount of files zipped
-     * @param totalAmount the amount of files that should be zipped
-     * @param zip the zip file
-     * @param mainFolder the main folder to read from
+     * @param totalAmount  the amount of files that should be zipped
+     * @param zip          the zip file
+     * @param mainFolder   the main folder to read from
      */
     private void zipConfigFolder(int zippedAmount, int totalAmount, ZipOutputStream zip, File mainFolder) throws Throwable {
         File[] files = mainFolder.listFiles();

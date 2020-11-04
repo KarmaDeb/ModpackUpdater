@@ -1,17 +1,17 @@
-package ml.karmaconfigs.ModPackUpdater;
+package ml.karmaconfigs.modpackupdater;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.intellijthemes.FlatAllIJThemes;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.Config;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Downloader;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Installer;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.ListMods;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
-import ml.karmaconfigs.ModPackUpdater.VersionChecker.Changelog;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.Config;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Downloader;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Installer;
+import ml.karmaconfigs.modpackupdater.utils.modpack.ListMods;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Modpack;
+import ml.karmaconfigs.modpackupdater.versionchecker.Changelog;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -36,39 +37,170 @@ import java.util.*;
 
 public class MainFrame {
 
-    private static boolean shift = false;
-    private static final HashMap<String, String> themeData = new HashMap<>();
+    static final HashMap<String, String> themeData = new HashMap<>();
     public static String version = "${version}";
-
-    private static JFrame cFrame;
-
     public static JComboBox<String> modpacks = new JComboBox<>(Modpack.listing.modpacks());
-
     public static JFrame frame;
-
     public static JPanel line = new Line();
-
-    public static JLabel bPane;
     public static JLabel barLabel;
-
     public static JScrollPane jsp;
-
+    public static JLabel internal_label = new JLabel();
+    static {
+        internal_label.setOpaque(true);
+        internal_label.setBackground(Color.DARK_GRAY);
+    }
     public static JSplitPane modpackLabel;
-
     public static JProgressBar bar;
-
     public static JButton refreshChangelog;
     public static JButton chooseFolder;
-
-    private static JTextArea dlURL;
-
     public static File mcFolder;
+    public static boolean active = false;
+    private static boolean shift = false;
+    private static JFrame cFrame;
+    private static JTextArea dlURL;
     private File installFolder;
+
+    public static void restartModpacksListeners() {
+        Utils utils = new Utils();
+        modpacks.addActionListener(e -> {
+            Object modpackName = modpacks.getSelectedItem();
+
+            if (modpackName != null) {
+                String name = modpackName.toString();
+                Modpack modpack = new Modpack(name);
+
+                if (modpack.exists()) {
+                    String urlDir;
+
+                    if (!modpack.getDownloadURL().contains("http://") && !modpack.getDownloadURL().contains("https://")) {
+                        urlDir = "http://" + modpack.getDownloadURL();
+                    } else {
+                        urlDir = modpack.getDownloadURL();
+                    }
+
+                    if (urlDir.endsWith("/")) {
+                        urlDir = urlDir.substring(0, urlDir.length() - 1);
+                    }
+
+                    utils.setDebug(utils.rgbColor("Detected modpack " + modpack.getName() + " url: " + urlDir, 155, 240, 175), true);
+                    dlURL.setText(urlDir);
+
+                    FilesUtilities.getConfig.saveDownloadURL(urlDir);
+                }
+            }
+        });
+
+        modpacks.addMouseListener(new MouseInputAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+
+                if (shift) {
+                    Object modpackName = modpacks.getSelectedItem();
+                    if (modpackName != null) {
+                        Modpack modpack = new Modpack(modpackName.toString());
+                        if (modpack.exists()) {
+                            utils.displayPackInfo(modpack);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    public static void main(String[] args) {
+        detectThemes();
+        try {
+            InputStream props = (MainFrame.class).getResourceAsStream("/data.properties");
+            Properties properties = new Properties();
+            properties.load(props);
+            version = properties.getProperty("version");
+        } catch (Throwable e) {
+            version = "0";
+        }
+
+        try {
+            String themeName = new Config().getTheme();
+
+            UIManager.setLookAndFeel(themeData.getOrDefault(themeName
+                    .replace("Dark 2", "Dark purple")
+                    .replace("Themes by FlatLaf themes", "Light"), "Dark"));
+
+            new MainFrame().initFrame();
+            new SimpleFrame().initFrame();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                SwingUtilities.invokeLater(() -> {
+                    if (frame != null) {
+                        frame.invalidate();
+                        frame.repaint();
+                        frame.revalidate();
+                    }
+                    if (SimpleFrame.frame != null) {
+                        SimpleFrame.frame.invalidate();
+                        SimpleFrame.frame.repaint();
+                        SimpleFrame.frame.revalidate();
+                    }
+                    if (CreateFrame.creatorFrame != null) {
+                        CreateFrame.creatorFrame.invalidate();
+                        CreateFrame.creatorFrame.repaint();
+                        CreateFrame.creatorFrame.revalidate();
+                    }
+                });
+            }
+        }, 0, 1);
+
+        Config config = new Config();
+        if (config.skipSelector()) {
+            if (config.openSimple()) {
+                SimpleFrame.frame.setVisible(true);
+            } else {
+                MainFrame.frame.setVisible(true);
+            }
+        } else {
+            new SimplePopup().initialize();
+        }
+    }
+
+    private static void detectThemes() {
+        themeData.put("Light", FlatLightLaf.class.getCanonicalName());
+        FlatLightLaf.install();
+        themeData.put("Dark", FlatDarkLaf.class.getCanonicalName());
+        FlatDarkLaf.install();
+        themeData.put("Darcula", FlatDarculaLaf.class.getCanonicalName());
+        FlatDarculaLaf.install();
+
+        for (UIManager.LookAndFeelInfo info : FlatAllIJThemes.INFOS) {
+            UIManager.installLookAndFeel(info);
+            themeData.put(info.getName(), info.getClassName());
+        }
+
+        themeData.put("Themes by FlatLaf themes", FlatLightLaf.class.getCanonicalName());
+    }
+
+    static String[] getThemes() {
+        String[] namesArray = new String[themeData.keySet().size()];
+        int index = 0;
+        for (String str : themeData.keySet()) {
+            namesArray[index] = str;
+            index++;
+        }
+
+        return namesArray;
+    }
 
     /**
      * Initialize the launcher GUI
      */
-    public void initFrame() {
+    public void initFrame() throws InvocationTargetException, InterruptedException {
+        active = false;
+
         Utils utils = new Utils();
         mcFolder = FilesUtilities.getConfig.getMinecraftDir();
         installFolder = FilesUtilities.getConfig.getDownloadDir();
@@ -117,6 +249,7 @@ public class MainFrame {
         refreshChangelog = new JButton("Refresh version info");
         chooseFolder = new JButton("MC download folder");
         JButton exportDebug = new JButton("Export debug");
+        JButton version_selector = new JButton("Version selector");
 
         //Panels
         JPanel installPanel = new JPanel();
@@ -128,19 +261,19 @@ public class MainFrame {
         JPanel chooserPanel = new JPanel();
 
         //Labels
-        bPane = new JLabel();
         JLabel cPane = new JLabel();
         JLabel themeText = new JLabel("Theme");
         JLabel packText = new JLabel("Modpack");
 
         //Scroll panes
-        jsp = new JScrollPane(bPane);
+        jsp = new JScrollPane(internal_label);
         JScrollPane csp = new JScrollPane(cPane);
 
         //Split panes
         JSplitPane installSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, install, hardInstall);
         JSplitPane options = new JSplitPane(JSplitPane.VERTICAL_SPLIT, download, installPanel);
         JSplitPane manager = new JSplitPane(JSplitPane.VERTICAL_SPLIT, list, createPanel);
+        JSplitPane version_button = new JSplitPane(JSplitPane.VERTICAL_SPLIT, manager, version_selector);
 
         JSplitPane leftTop = new JSplitPane(JSplitPane.VERTICAL_SPLIT, optionsPanel, managerPanel);
 
@@ -166,7 +299,7 @@ public class MainFrame {
         JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, lineSplit, barSplitter);
 
         //Disable the split panes resizing...
-        disable(installSplit, options, manager, leftTop, themeLabel, modpackLabel, managerSplitterOne, managerSplitterTwo, managerSplitterThree, managerSplitter, optionOneSplitter, optionTwoSplitter, left, right, barSplitter, barStatusSplitter, lineSplit, splitter);
+        disable(installSplit, options, manager, version_button, leftTop, themeLabel, modpackLabel, managerSplitterOne, managerSplitterTwo, managerSplitterThree, managerSplitter, optionOneSplitter, optionTwoSplitter, left, right, barSplitter, barStatusSplitter, lineSplit, splitter);
 
         //Make all the panels work and display the correct way
         //Yes, I use brackets to separate it '-'
@@ -204,7 +337,7 @@ public class MainFrame {
             { //Panels options
                 installPanel.add(installSplit);
                 optionsPanel.add(options);
-                managerPanel.add(manager);
+                managerPanel.add(version_button);
                 themePane.add(themeLabel);
                 modpackPane.add(modpackLabel);
                 launcherPanel.add(refreshChangelog);
@@ -221,18 +354,14 @@ public class MainFrame {
         int themeAmount = theme.getItemCount() - 1;
         utils.setDebug(utils.rgbColor("Loaded " + themeAmount + " themes", 125, 255, 195), false);
 
-        bPane.setOpaque(true);
-        bPane.setBackground(Color.DARK_GRAY);
-
         frame.setPreferredSize(new Dimension(1280, 720));
         frame.setTitle("ModPack updater by KarmaDev " + version);
         frame.add(splitter);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
-        frame.setVisible(true);
         frame.setResizable(false);
         Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-        frame.setLocation(dim.width/2-frame.getSize().width/2, dim.height/2-frame.getSize().height/2);
+        frame.setLocation(dim.width / 2 - frame.getSize().width / 2, dim.height / 2 - frame.getSize().height / 2);
         frame.setMinimumSize(new Dimension(800, 800));
 
         frame.addWindowListener(new WindowListener() {
@@ -245,7 +374,7 @@ public class MainFrame {
             public void windowClosing(WindowEvent e) {
                 Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
                 for (Thread thread : threadSet) {
-                    if (thread.getState()==Thread.State.RUNNABLE)
+                    if (thread.getState() == Thread.State.RUNNABLE)
                         thread.interrupt();
                 }
             }
@@ -282,12 +411,16 @@ public class MainFrame {
                     case KeyEvent.KEY_PRESSED:
                         if (ke.getKeyCode() == KeyEvent.VK_SHIFT || ke.getKeyCode() == KeyEvent.VK_CONTROL) {
                             shift = true;
+                            exportDebug.setText("Open debug");
+                            packText.setText("<html>Modpack<br>info</html>");
                         }
                         break;
 
                     case KeyEvent.KEY_RELEASED:
                         if (ke.getKeyCode() == KeyEvent.VK_SHIFT || ke.getKeyCode() == KeyEvent.VK_CONTROL) {
                             shift = false;
+                            exportDebug.setText("Export debug");
+                            packText.setText("Modpack");
                         }
                         break;
                 }
@@ -353,7 +486,7 @@ public class MainFrame {
                     fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
                 }
 
-                if(((DefaultComboBoxModel<String>)modpacks.getModel()).getIndexOf(modpack.getName()) == -1) {
+                if (((DefaultComboBoxModel<String>) modpacks.getModel()).getIndexOf(modpack.getName()) == -1) {
                     modpacks.addItem(modpack.getName());
                     modpacks.setSelectedItem(modpack.getName());
                     dlURL.setText(urlDir);
@@ -418,18 +551,25 @@ public class MainFrame {
         });
 
         createPanel.addActionListener(e -> SwingUtilities.invokeLater(() -> {
-            if (CreateFrame.creatorFrame == null) {
-                CreateFrame newFrame = new CreateFrame();
-                newFrame.display();
-            } else {
-                CreateFrame.versioning.checkVersions();
+            if (!shift) {
+                if (CreateFrame.creatorFrame == null) {
+                    CreateFrame newFrame = new CreateFrame();
+                    newFrame.display();
+                } else {
+                    CreateFrame.versioning.checkVersions();
 
-                if (!CreateFrame.creatorFrame.isVisible()) {
-                    CreateFrame.creatorFrame.setVisible(true);
+                    if (!CreateFrame.creatorFrame.isVisible()) {
+                        CreateFrame.creatorFrame.setVisible(true);
+                    }
+                    CreateFrame.creatorFrame.toFront();
                 }
-                CreateFrame.creatorFrame.toFront();
             }
         }));
+
+        version_selector.addActionListener(e -> {
+            frame.setVisible(false);
+            new SimplePopup().initialize();
+        });
 
         dlURL.getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -618,78 +758,39 @@ public class MainFrame {
         });
 
         exportDebug.addActionListener(e -> {
-            try {
-                File debug = new File(FilesUtilities.getUpdaterDir(), "debug.html");
-
-                if (!debug.exists() && debug.createNewFile()) {
-                    System.out.println("Executed");
-                }
-                String color = "DarkGrey";
-                String rgb = "( R:" + bPane.getBackground().getRed() + ", B:" + bPane.getBackground().getBlue() + ", G:" + bPane.getBackground().getGreen() + " )";
-
-                String totalRGB = bPane.getBackground().getRed() + ", " + bPane.getBackground().getBlue() + ", " + bPane.getBackground().getGreen();
-
-                FileWriter writer = new FileWriter(debug);
-                writer.write("<!-- THEME: " + FilesUtilities.getConfig.getTheme() + ", Base-Color: " + color.replace("DarkGrey", "DARK_GRAY") + "; [AS RGB]: " + rgb + " -->");
-                for (String str : bPane.getText().split("<br>")) {
-                    writer.write(str.replace("<html>", "<html style=\"background-color: rgb(" + totalRGB + ");\">") + "<br>" + "\n");
-                }
-                writer.flush();
-                writer.close();
-
-                utils.setDebug(utils.rgbColor("Exported debug to debug.html", 155, 240, 175), true);
-            } catch (Throwable ex) {
-                utils.log(ex);
-            }
-        });
-    }
-
-    public static void restartModpacksListeners() {
-        Utils utils = new Utils();
-        modpacks.addActionListener(e -> {
-            Object modpackName = modpacks.getSelectedItem();
-
-            if (modpackName != null) {
-                String name = modpackName.toString();
-                Modpack modpack = new Modpack(name);
-
-                if (modpack.exists()) {
-                    String urlDir;
-
-                    if (!modpack.getDownloadURL().contains("http://") && !modpack.getDownloadURL().contains("https://")) {
-                        urlDir = "http://" + modpack.getDownloadURL();
-                    } else {
-                        urlDir = modpack.getDownloadURL();
+            File debug = new File(FilesUtilities.getUpdaterDir(), "debug.html");
+            if (!shift) {
+                try {
+                    if (!debug.exists() && debug.createNewFile()) {
+                        System.out.println("Executed");
                     }
+                    String color = "DarkGrey";
+                    String rgb = "( R:" + internal_label.getBackground().getRed() + ", B:" + internal_label.getBackground().getBlue() + ", G:" + internal_label.getBackground().getGreen() + " )";
 
-                    if (urlDir.endsWith("/")) {
-                        urlDir = urlDir.substring(0, urlDir.length() - 1);
+                    String totalRGB = internal_label.getBackground().getRed() + ", " + internal_label.getBackground().getBlue() + ", " + internal_label.getBackground().getGreen();
+
+                    FileWriter writer = new FileWriter(debug);
+                    writer.write("<!-- THEME: " + FilesUtilities.getConfig.getTheme() + ", Base-Color: " + color.replace("DarkGrey", "DARK_GRAY") + "; [AS RGB]: " + rgb + " -->");
+                    for (String str : internal_label.getText().split("<br>")) {
+                        writer.write(str.replace("<html>", "<html style=\"background-color: rgb(" + totalRGB + ");\">") + "<br>" + "\n");
                     }
+                    writer.flush();
+                    writer.close();
 
-                    utils.setDebug(utils.rgbColor("Detected modpack " + modpack.getName() + " url: " + urlDir, 155, 240, 175), true);
-                    dlURL.setText(urlDir);
-
-                    FilesUtilities.getConfig.saveDownloadURL(urlDir);
+                    utils.setDebug(utils.rgbColor("Exported debug to debug.html", 155, 240, 175), true);
+                } catch (Throwable ex) {
+                    utils.log(ex);
+                }
+            } else {
+                try {
+                    Desktop.getDesktop().open(debug);
+                } catch (Throwable ex) {
+                    utils.log(ex);
                 }
             }
         });
 
-        modpacks.addMouseListener(new MouseInputAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                super.mouseClicked(e);
-
-                if (shift) {
-                    Object modpackName = modpacks.getSelectedItem();
-                    if (modpackName != null) {
-                        Modpack modpack = new Modpack(modpackName.toString());
-                        if (modpack.exists()) {
-                            utils.displayPackInfo(modpack);
-                        }
-                    }
-                }
-            }
-        });
+        SwingUtilities.invokeAndWait(utils::reloadTool);
     }
 
     private void disable(JSplitPane... panes) {
@@ -702,76 +803,6 @@ public class MainFrame {
         for (Component component : components) {
             component.setPreferredSize(syncWith.getPreferredSize());
         }
-    }
-
-    public static void main(String[] args) {
-        detectThemes();
-        try {
-            InputStream props = (MainFrame.class).getResourceAsStream("/data.properties");
-            Properties properties = new Properties();
-            properties.load(props);
-            version = properties.getProperty("version");
-        } catch (Throwable e) {
-            version = "0";
-        }
-
-        try {
-            String themeName = new Config().getTheme();
-
-            UIManager.setLookAndFeel(themeData.getOrDefault(themeName
-                    .replace("Dark 2", "Dark purple")
-                    .replace("Themes by FlatLaf themes", "Light"), "Dark"));
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-
-        new MainFrame().initFrame();
-
-        Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                SwingUtilities.invokeLater(() -> {
-                    if (frame != null) {
-                        frame.invalidate();
-                        frame.repaint();
-                        frame.revalidate();
-                    }
-                    if (CreateFrame.creatorFrame != null) {
-                        CreateFrame.creatorFrame.invalidate();
-                        CreateFrame.creatorFrame.repaint();
-                        CreateFrame.creatorFrame.revalidate();
-                    }
-                });
-            }
-        }, 0, 1);
-    }
-
-    private static void detectThemes() {
-        themeData.put("Light", FlatLightLaf.class.getCanonicalName());
-        FlatLightLaf.install();
-        themeData.put("Dark", FlatDarkLaf.class.getCanonicalName());
-        FlatDarkLaf.install();
-        themeData.put("Darcula", FlatDarculaLaf.class.getCanonicalName());
-        FlatDarculaLaf.install();
-
-        for (UIManager.LookAndFeelInfo info : FlatAllIJThemes.INFOS) {
-            UIManager.installLookAndFeel(info);
-            themeData.put(info.getName(), info.getClassName());
-        }
-
-        themeData.put("Themes by FlatLaf themes", FlatLightLaf.class.getCanonicalName());
-    }
-
-    private static String[] getThemes() {
-        String[] namesArray = new String[themeData.keySet().size()];
-        int index = 0;
-        for (String str : themeData.keySet()) {
-            namesArray[index] = str;
-            index++;
-        }
-
-        return namesArray;
     }
 }
 

@@ -1,23 +1,25 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
+package ml.karmaconfigs.modpackupdater.utils.modpack;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.SelectiveSelection;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.Unzip;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.files.SelectiveSelection;
+import ml.karmaconfigs.modpackupdater.utils.files.Unzip;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 public final class Installer {
 
-    private final Utils utils = new Utils();
     private static Modpack pack;
-
+    private final Utils utils = new Utils();
     private final boolean fullInstall;
-    
+
     /**
      * Install the specified modpack
      *
@@ -336,7 +338,7 @@ public final class Installer {
             utils.setDebug(utils.rgbColor("Tried to move a total of " + total + " mods <span style=\" color: green;\">" + success + "</span> moved and <span style=\" color: red;\">" + error + "</span> failed", 255, 100, 100), true);
         }
     }
-    
+
     @SneakyThrows
     private void renameTextures() {
         utils.setDebug(utils.rgbColor("Cleaning minecraft resourcepacks folder...", 155, 240, 175), true);
@@ -418,7 +420,7 @@ public final class Installer {
             });
         }
     }
-    
+
     private ArrayList<File> getMods() {
         ArrayList<File> mods = new ArrayList<>();
 

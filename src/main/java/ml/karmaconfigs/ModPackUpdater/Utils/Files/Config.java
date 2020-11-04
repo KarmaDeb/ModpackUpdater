@@ -1,4 +1,4 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Files;
+package ml.karmaconfigs.modpackupdater.utils.files;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -6,6 +6,25 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 public final class Config {
+
+    private final static File cfg = new File(getUpdaterDir() + "/config.mpconfig");
+
+    static {
+        if (!getUpdaterDir().exists()) {
+            if (getUpdaterDir().mkdirs()) {
+                System.out.println("Executed");
+            }
+        }
+        if (!cfg.exists()) {
+            try {
+                if (cfg.createNewFile()) {
+                    System.out.println("Created config file");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     private static String getOS() {
         String OS = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
@@ -32,25 +51,6 @@ public final class Config {
             return new File(System.getProperty("user.home") + "/Library/Application Support/ModPackUpdater");
         }
         return new File("");
-    }
-
-    private final static File cfg = new File(getUpdaterDir() + "/config.mpconfig");
-
-    static {
-        if (!getUpdaterDir().exists()) {
-            if (getUpdaterDir().mkdirs()) {
-                System.out.println("Executed");
-            }
-        }
-        if (!cfg.exists()) {
-            try {
-                if (cfg.createNewFile()) {
-                    System.out.println("Created config file");
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     private void write(String path, String value) {
@@ -95,7 +95,8 @@ public final class Config {
                         }
                     }
                 }
-            } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {
+            }
         }
     }
 
@@ -129,7 +130,8 @@ public final class Config {
                         }
                     }
                 }
-            } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {
+            }
         }
         return val;
     }
@@ -189,6 +191,14 @@ public final class Config {
     public final void saveMcDownloadDir(File mcFolder) {
         //System.out.printInt("Saved mc download folder")
         write("DOWNLOAD_DIR", FilesUtilities.getPath(mcFolder));
+    }
+
+    public final void saveSkipSelector(final boolean skip) {
+        write("SKIP_SELECTOR", String.valueOf(skip));
+    }
+
+    public final void saveLaunchType(final boolean isSimple) {
+        write("OPEN_SIMPLE", String.valueOf(isSimple));
     }
 
     public final String getRuntime() {
@@ -276,7 +286,7 @@ public final class Config {
         if (value.equals("true") || value.equals("false")) {
             return Boolean.parseBoolean(value);
         } else {
-            return true;
+            return false;
         }
     }
 
@@ -287,6 +297,26 @@ public final class Config {
             return Boolean.parseBoolean(value);
         } else {
             return true;
+        }
+    }
+
+    public final boolean skipSelector() {
+        String value = get("SKIP_SELECTOR", "false");
+
+        if (value.equals("true") || value.equals("false")) {
+            return Boolean.parseBoolean(value);
+        } else {
+            return false;
+        }
+    }
+
+    public final boolean openSimple() {
+        String value = get("OPEN_SIMPLE", "false");
+
+        if (value.equals("true") || value.equals("false")) {
+            return Boolean.parseBoolean(value);
+        } else {
+            return false;
         }
     }
 }

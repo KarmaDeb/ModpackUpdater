@@ -1,8 +1,8 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Files;
+package ml.karmaconfigs.modpackupdater.utils.files;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Modpack;
 
 import java.io.File;
 

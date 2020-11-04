@@ -1,14 +1,15 @@
-package ml.karmaconfigs.ModPackUpdater.Utils;
+package ml.karmaconfigs.modpackupdater.utils;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.CreateFrame;
-import ml.karmaconfigs.ModPackUpdater.MainFrame;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.CopyFile;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Downloader;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.ListMods;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
+import ml.karmaconfigs.modpackupdater.CreateFrame;
+import ml.karmaconfigs.modpackupdater.MainFrame;
+import ml.karmaconfigs.modpackupdater.SimpleFrame;
+import ml.karmaconfigs.modpackupdater.utils.files.CopyFile;
+import ml.karmaconfigs.modpackupdater.utils.files.CustomFile;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Downloader;
+import ml.karmaconfigs.modpackupdater.utils.modpack.ListMods;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Modpack;
 import org.apache.commons.io.FileUtils;
 
 import javax.imageio.ImageIO;
@@ -21,10 +22,31 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.*;
 import java.util.Timer;
+import java.util.*;
 
 public final class Utils extends MainFrame implements Runnable {
+
+    public static JFrame info;
+    public static JLabel infoScrollable;
+    public static JLabel bPane = new JLabel();
+
+    static {
+        bPane.setOpaque(true);
+        bPane.setBackground(Color.DARK_GRAY);
+    }
+
+    static int configsAmount = 0;
+    static HashMap<String, String> debugData = new HashMap<>();
+    private static String baseURL = "";
+    private static String name = "";
+    private static String version = "NULL_VERSION";
+    private static String inheritVersion = "NULL_VERSION";
+    private static boolean asZip = false;
+    private static boolean includeShaders = false;
+    private static boolean includeTextures = false;
+    private static boolean includeConfigs = false;
+    private static boolean enableDebug = false;
 
     public Utils() {
         if (!FilesUtilities.getUpdaterDir().exists()) {
@@ -48,26 +70,10 @@ public final class Utils extends MainFrame implements Runnable {
         }
     }
 
-    public interface os {
-        static String getOS() {
-            String OS = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
-
-            if ((OS.contains("mac")) || (OS.contains("darwin"))) {
-                return ("Mac");
-            } else if (OS.contains("win")) {
-                return ("Windows");
-            } else if (OS.contains("nux")) {
-                return ("Linux");
-            } else {
-                return ("Linux");
-            }
-        }
-    }
-
     public final boolean ModExists(File mod) {
         return mod.exists();
     }
-    
+
     public final void log(Throwable throwable) {
         try {
             Date today = new Date();
@@ -105,16 +111,6 @@ public final class Utils extends MainFrame implements Runnable {
             setDebug(rgbColor(exception.toString(), 120, 100, 100), false);
         }
     }
-
-    private static String baseURL = "";
-    private static String name = "";
-    private static String version = "NULL_VERSION";
-    private static String inheritVersion = "NULL_VERSION";
-    private static boolean asZip = false;
-    private static boolean includeShaders = false;
-    private static boolean includeTextures = false;
-    private static boolean includeConfigs = false;
-    private static boolean enableDebug = false;
 
     public final void setupCreator(String baseUrl, String modpackName, String loaderVersion, String realVersion, boolean zip, boolean withShaders, boolean withTextures, boolean configs, boolean debug) {
         baseURL = baseUrl;
@@ -297,6 +293,7 @@ public final class Utils extends MainFrame implements Runnable {
             modpacks.setPreferredSize(size);
             modpackLabel.add(modpacks);
             restartModpacksListeners();
+            SimpleFrame.restartModpacksListeners();
         } catch (Throwable e) {
             log(e);
         }
@@ -311,11 +308,13 @@ public final class Utils extends MainFrame implements Runnable {
         }
 
         bPane.setText("<html>" + oldText + separator + newLine + "</html>");
+        internal_label.setText("<html>" + oldText + separator + newLine + "</html>");
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                jsp.getVerticalScrollBar().setValue(jsp.getVerticalScrollBar().getMaximum());
+                MainFrame.jsp.getVerticalScrollBar().setValue(MainFrame.jsp.getVerticalScrollBar().getMaximum());
+                SimpleFrame.jsp.getVerticalScrollBar().setValue(SimpleFrame.jsp.getVerticalScrollBar().getMaximum());
             }
         }, 500);
     }
@@ -327,9 +326,6 @@ public final class Utils extends MainFrame implements Runnable {
         bar.setValue(progress);
         barLabel.setText("<html><div><h3>" + title + "</h3></div></html>");
     }
-
-    public static JFrame info;
-    public static JLabel infoScrollable;
 
     public final void displayPackInfo(Modpack modpack) {
         if (info == null) {
@@ -462,6 +458,14 @@ public final class Utils extends MainFrame implements Runnable {
                 }
             }
 
+            SwingUtilities.updateComponentTreeUI(SimpleFrame.frame);
+            for (Component component : SimpleFrame.frame.getComponents()) {
+                if (component != null) {
+                    SwingUtilities.updateComponentTreeUI(component);
+                }
+            }
+
+
             SwingUtilities.updateComponentTreeUI(CreateFrame.chooser);
             for (Component component : CreateFrame.chooser.getComponents()) {
                 if (component != null) {
@@ -552,7 +556,7 @@ public final class Utils extends MainFrame implements Runnable {
 
         return "<span>" + toString.toString().replace("[", "").replace("]", "").replace(",", "<br>") + "</span>";
     }
-    
+
     public final String getModpackName(String url) throws Throwable {
         BufferedReader in = new BufferedReader(
                 new InputStreamReader(new URL(url).openStream()));
@@ -700,7 +704,8 @@ public final class Utils extends MainFrame implements Runnable {
             if (bool) {
                 System.out.println("Executed");
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
     }
 
     private void modifyLog(File logFile, String firstLine, Throwable info) {
@@ -764,7 +769,8 @@ public final class Utils extends MainFrame implements Runnable {
                         }
                     }
                 }
-            } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {
+            }
         }
     }
 
@@ -839,9 +845,6 @@ public final class Utils extends MainFrame implements Runnable {
         }
         return false;
     }
-
-    static int configsAmount = 0;
-    static HashMap<String, String> debugData = new HashMap<>();
 
     @SneakyThrows
     private boolean copyConfigs(Modpack modpack) {
@@ -940,8 +943,8 @@ public final class Utils extends MainFrame implements Runnable {
     /**
      * Get the config files from directories in an arraylist
      *
-     * @param baseURL the base download url
-     * @param mainFolder the main config folder
+     * @param baseURL      the base download url
+     * @param mainFolder   the main config folder
      * @param originalList the original config file list
      */
     private HashSet<String> getConfigFilesFromDir(String baseURL, File mainFolder, HashSet<String> originalList) {
@@ -964,5 +967,21 @@ public final class Utils extends MainFrame implements Runnable {
         }
 
         return originalList;
+    }
+
+    public interface os {
+        static String getOS() {
+            String OS = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
+
+            if ((OS.contains("mac")) || (OS.contains("darwin"))) {
+                return ("Mac");
+            } else if (OS.contains("win")) {
+                return ("Windows");
+            } else if (OS.contains("nux")) {
+                return ("Linux");
+            } else {
+                return ("Linux");
+            }
+        }
     }
 }

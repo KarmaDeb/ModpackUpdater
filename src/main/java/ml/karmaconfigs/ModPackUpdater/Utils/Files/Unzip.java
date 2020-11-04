@@ -1,7 +1,7 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Files;
+package ml.karmaconfigs.modpackupdater.utils.files;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -10,14 +10,11 @@ import java.util.zip.ZipInputStream;
 
 public final class Unzip implements Runnable {
 
+    private final static Utils utils = new Utils();
     private final ArrayList<File> zips = new ArrayList<>();
     private final File destDir;
-
     private final boolean debug;
-
     private boolean ended = false;
-
-    private final static Utils utils = new Utils();
 
     public Unzip(File zip, File dest, boolean debugging) {
         zips.add(zip);

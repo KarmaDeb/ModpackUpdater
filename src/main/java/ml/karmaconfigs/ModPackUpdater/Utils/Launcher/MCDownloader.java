@@ -1,9 +1,9 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Launcher;
+package ml.karmaconfigs.modpackupdater.utils.launcher;
 
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.Unzip;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.files.Unzip;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Modpack;
 import org.apache.commons.io.FileUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -20,14 +20,14 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class MCDownloader {
-    
+
     private static Modpack modpack;
 
     private static boolean finished = false;
-    
+
     /**
      * Initialize the MCDownloader
-     * 
+     *
      * @param modpack the modpack natives to download
      */
     public MCDownloader(Modpack modpack) {
@@ -86,15 +86,15 @@ public final class MCDownloader {
                                                                     timer_5.cancel();
                                                                 }
                                                             }
-                                                        },0 , 1);
+                                                        }, 0, 1);
                                                         timer_4.cancel();
                                                     }
                                                 }
-                                            },0 , 1);
+                                            }, 0, 1);
                                             timer_3.cancel();
                                         }
                                     }
-                                },0 ,1);
+                                }, 0, 1);
                                 timer_2.cancel();
                             }
                         }
@@ -102,7 +102,7 @@ public final class MCDownloader {
                     timer_1.cancel();
                 }
             }
-        },0, 1);
+        }, 0, 1);
     }
 
     /**
@@ -120,9 +120,8 @@ public final class MCDownloader {
  */
 class DownloadManifest implements Runnable {
 
-    public boolean downloaded = false;
-
     private final static Utils utils = new Utils();
+    public boolean downloaded = false;
 
     @Override
     public void run() {
@@ -182,11 +181,9 @@ class DownloadManifest implements Runnable {
  */
 class DownloadJSon implements Runnable {
 
-    private static String version;
-
-    public boolean downloaded = false;
-
     private final static Utils utils = new Utils();
+    private static String version;
+    public boolean downloaded = false;
 
     public DownloadJSon(Modpack modpack) {
         version = modpack.getRealVersion();
@@ -274,11 +271,9 @@ class DownloadJSon implements Runnable {
 
 class DownloadAssetsIndex implements Runnable {
 
-    private static String version;
-
-    public boolean downloaded = false;
-
     private final static Utils utils = new Utils();
+    private static String version;
+    public boolean downloaded = false;
 
     public DownloadAssetsIndex(Modpack modpack) {
         version = modpack.getRealVersion();
@@ -361,12 +356,10 @@ class DownloadAssetsIndex implements Runnable {
 
 class DownloadLibraries implements Runnable {
 
+    private final static Utils utils = new Utils();
     private static String version;
     private static String f_version;
-
     public boolean downloaded = false;
-
-    private final static Utils utils = new Utils();
 
     public DownloadLibraries(Modpack modpack) {
         f_version = modpack.getVersionName();

@@ -1,4 +1,4 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Files;
+package ml.karmaconfigs.modpackupdater.utils.files;
 
 import java.io.File;
 import java.util.Collection;
@@ -12,7 +12,7 @@ public final class SelectiveSelection {
         selectedFiles.add(file);
     }
 
-    public final void addSelectedFile(Collection<File> files)  {
+    public final void addSelectedFile(Collection<File> files) {
         selectedFiles.addAll(files);
     }
 

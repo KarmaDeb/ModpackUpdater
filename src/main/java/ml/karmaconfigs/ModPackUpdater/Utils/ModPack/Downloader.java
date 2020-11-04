@@ -1,10 +1,10 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
+package ml.karmaconfigs.modpackupdater.utils.modpack;
 
 import lombok.SneakyThrows;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.Unzip;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.CustomFile;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.files.Unzip;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
@@ -19,13 +19,11 @@ import java.util.concurrent.TimeUnit;
 public final class Downloader implements Runnable {
 
     private static final Utils utils = new Utils();
-
-    private static String url;
     private final static ArrayList<String> mods = new ArrayList<>();
     private final static ArrayList<String> versions = new ArrayList<>();
     private final static ArrayList<String> configs = new ArrayList<>();
     private final static HashMap<String, URL> downloads = new HashMap<>();
-
+    private static String url;
     private static boolean zipVersion = false;
     private static boolean isZip = false;
 
@@ -37,6 +35,21 @@ public final class Downloader implements Runnable {
         modpack = new Modpack(utils.getModpackName(url));
         utils.saveCurrentModpack(modpack);
         versions.clear();
+    }
+
+    public static boolean isMod(File jarFile) {
+        String extension = FilenameUtils.getExtension(jarFile.getName());
+        return extension.equals("jar");
+    }
+
+    public static boolean isZip(File file) {
+        String extension = FilenameUtils.getExtension(file.getName());
+        return extension.equals("zip");
+    }
+
+    public static boolean isConfig(File file) {
+        String extension = FilenameUtils.getExtension(file.getName());
+        return extension.equals("cfg") || extension.equals("properties");
     }
 
     @lombok.SneakyThrows
@@ -80,7 +93,7 @@ public final class Downloader implements Runnable {
 
             if (!file.getList("V_URLS").isEmpty()) {
                 zipVersion = false;
-                List<Object> versionURLs= file.getList("V_URLS");
+                List<Object> versionURLs = file.getList("V_URLS");
 
                 for (Object obj : versionURLs) {
                     if (obj.toString().contains("=")) {
@@ -666,20 +679,5 @@ public final class Downloader implements Runnable {
                 }
             });
         }
-    }
-
-    public static boolean isMod(File jarFile) {
-        String extension = FilenameUtils.getExtension(jarFile.getName());
-        return extension.equals("jar");
-    }
-
-    public static boolean isZip(File file) {
-        String extension = FilenameUtils.getExtension(file.getName());
-        return extension.equals("zip");
-    }
-
-    public static boolean isConfig(File file) {
-        String extension = FilenameUtils.getExtension(file.getName());
-        return extension.equals("cfg") || extension.equals("properties");
     }
 }

@@ -1,8 +1,8 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
+package ml.karmaconfigs.modpackupdater.utils.modpack;
 
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.CustomFile;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -15,15 +15,13 @@ import java.util.List;
 
 public final class ListMods implements Runnable {
 
+    private final static HashSet<File> staticMods = new HashSet<>();
     private static String url;
-
     private final Utils utils = new Utils();
 
     public ListMods(String url) {
         ListMods.url = url;
     }
-
-    private final static HashSet<File> staticMods = new HashSet<>();
 
     @Override
     public void run() {

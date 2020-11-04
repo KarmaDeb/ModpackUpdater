@@ -1,6 +1,6 @@
-package ml.karmaconfigs.ModPackUpdater.VersionChecker;
+package ml.karmaconfigs.modpackupdater.versionchecker;
 
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -13,9 +13,8 @@ import java.util.concurrent.TimeUnit;
 
 public final class Changelog {
 
-    private static String latest = "0";
     private static final ArrayList<String> changelog = new ArrayList<>();
-
+    private static String latest = "0";
     private static int back = 10;
     private static boolean available = true;
 

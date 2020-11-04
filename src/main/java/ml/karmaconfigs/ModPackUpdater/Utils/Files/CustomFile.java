@@ -1,6 +1,6 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Files;
+package ml.karmaconfigs.modpackupdater.utils.files;
 
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -61,7 +61,7 @@ public final class CustomFile {
             writer.flush();
             writer.close();
         } catch (Throwable e) {
-             utils.log(e);
+            utils.log(e);
         }
     }
 

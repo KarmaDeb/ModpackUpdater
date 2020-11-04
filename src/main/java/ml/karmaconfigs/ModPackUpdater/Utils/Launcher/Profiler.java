@@ -1,10 +1,10 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.Launcher;
+package ml.karmaconfigs.modpackupdater.utils.launcher;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.ModPack.Modpack;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.modpack.Modpack;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
@@ -14,13 +14,11 @@ import java.nio.file.Files;
 
 public final class Profiler {
 
-    private final File profileFile = new File(FilesUtilities.getMinecraftDir(), "launcher_profiles.json");
-    private final Modpack modpack;
-
     private final static String icon = "Crafting_Table";
     private final static String date = "1970-01-01T00:00:00.000Z";
-
     private final static Utils utils = new Utils();
+    private final File profileFile = new File(FilesUtilities.getMinecraftDir(), "launcher_profiles.json");
+    private final Modpack modpack;
 
     /**
      * Initialize the profile creator
@@ -38,6 +36,12 @@ public final class Profiler {
             }
         }
         this.modpack = modpack;
+    }
+
+    private static JSONObject getJSON(File file) throws Exception {
+        FileReader reader = new FileReader(file);
+        JSONParser jsonParser = new JSONParser();
+        return (JSONObject) jsonParser.parse(reader);
     }
 
     /**
@@ -89,11 +93,5 @@ public final class Profiler {
         } catch (Throwable e) {
             utils.log(e);
         }
-    }
-
-    private static JSONObject getJSON(File file) throws Exception {
-        FileReader reader = new FileReader(file);
-        JSONParser jsonParser = new JSONParser();
-        return (JSONObject) jsonParser.parse(reader);
     }
 }

@@ -1,9 +1,9 @@
-package ml.karmaconfigs.ModPackUpdater.Utils.ModPack;
+package ml.karmaconfigs.modpackupdater.utils.modpack;
 
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.CustomFile;
-import ml.karmaconfigs.ModPackUpdater.Utils.Files.FilesUtilities;
-import ml.karmaconfigs.ModPackUpdater.Utils.Launcher.Profiler;
-import ml.karmaconfigs.ModPackUpdater.Utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.Utils;
+import ml.karmaconfigs.modpackupdater.utils.files.CustomFile;
+import ml.karmaconfigs.modpackupdater.utils.files.FilesUtilities;
+import ml.karmaconfigs.modpackupdater.utils.launcher.Profiler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
@@ -112,7 +112,7 @@ public final class Modpack {
 
     /**
      * Check if the modpack has a version
-     *
+     * <p>
      * --- NOTE: This allows legacy modpack updater
      * configs ---
      *
