@@ -225,132 +225,37 @@ public final class CreateFrame {
             }
         });
 
-        //TODO Implement this into the actual code...
-        url.addKeyListener(new KeyAdapter() {
-            
-           @Override
-           public final void keyPressed(KeyEvent e) {
-               boolean isCopy = shift && e.getKeyCode() == KeyEvent.VK_C;
-               boolean isPaste = shift && e.getKeyCode() == KeyEvent.VK_V;
-               boolean deleting = e.getKeyCode() == KeyEvent.VK_BACKSPACE;
-               char character = e.getKeyChar(); 
-               
-               String letter = String.valueOf(character);
-               if (Character.isLetterOrDigit(character) 
-                   && letter.equals("/") 
-                   && letter.equals(".") 
-                   && letter.equals(":")
-                   && !isCopy 
-                   && !isPaste
-                  && !deleting) {
-                    e.consume();   
-               }
-           }
-            
-           @Override
-           public final void keyTyped(KeyEvent e) {
-                boolean isPaste = shift && e.getKeyCode() == KeyEvent.VK_V;
-               boolean deleting = e.getKeyCode() == KeyEvent.VK_BACKSPACE;
-               
-               char charater = e.getKeyChar();
-               
-               String letter = String.valueOf(character);
-               if (Character.isLetterOrDigit(character) 
-                   && letter.equals("/") 
-                   && letter.equals(".") 
-                   && letter.equals(":")
-                   && !isCopy 
-                   && !isPaste 
-                   && !deleting) {
-                    e.consume();   
-               } else {
-                  SwingUtilities.invokeLater(() -> {
-                        if  (isPaste) {
-                            Clipboard clip = ToolKit.getDefaultToolKit().getSystemCliboard();
-                            //TODO Take the system clipboard...
-                            String data = (String) //System clipboard
-
-                            StringBuilder builder = new StringBuilder();
-                            for (int i = 0; i < data.length(); i++) {
-                                char character = data.charAt(i);
-
-                                if (Character.isLetterOrDigit(character) 
-                                       || letter.equals("/") 
-                                       || letter.equals(".") 
-                                       || letter.equals(":")) {
-                                    builder.append(character);
-                                }
-                            }
-
-                            url.setText(builder.toString());
-                            
-                            if (url.getText().isEmpty())
-                                url.setText("https://locahost.com/download.txt");
-                            
-                            FilesUtilities.getConfig.saveCreatorURL(url.getText());
-                      }
-                  });
-               }
-           }
-        });
-        
-        //TODO Implement this into the actual code...
-        name.addKeyListener(new keyAdpater() {
-            
+        url.getDocument().addDocumentListener(new DocumentListener() {
             @Override
-            public final voind keyPressed(KeyEvent e) {
-               boolean isCopy = shift && e.getKeyCode() == KeyEvent.VK_C;
-               boolean isPaste = shift && e.getKeyCode() == KeyEvent.VK_V;
-               boolean deleting = e.getKeyCode() == KeyEvent.VK_BACKSPACE;
-               char character = e.getKeyChar(); 
-               
-               String letter = String.valueOf(character);
-               if (Character.isLetter(character) 
-                   && letter.equals("_") 
-                   && !isCopy 
-                   && !isPaste
-                    && !deleting) {
-                    e.consume();   
-               }
+            public void insertUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveCreatorURL(url.getText());
             }
-            
+
             @Override
-            public final void keyTyped(KeyEvent e) {
-                boolean isPaste = shift && e.getKeyCode() == KeyEvent.VK_V;
-                boolean deleting = e.getKeyCode() == KeyEvent.VK_BACKSPACE;
-                char character = e.getKeyChar(); 
-               
-                String letter = String.valueOf(character);
-                if (Character.isLetter(character) 
-                    && letter.equals("_") 
-                    && !isCopy 
-                    && !isPaste
-                   && !deleting) {
-                        e.consume();   
-                } else {
-                       if (isPaste) {
-                            Clipboard clip = ToolKit.getDefaultToolKit().getSystemCliboard();
-                            //TODO Take the system clipboard...
-                            String data = (String) //System clipboard
+            public void removeUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveCreatorURL(url.getText());
+            }
 
-                            StringBuilder builder = new StringBuilder();
-                            for (int i = 0; i < data.length(); i++) {
-                                char character = data.charAt(i);
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveCreatorURL(url.getText());
+            }
+        });
 
-                                if (Character.isLetter(character) 
-                                       || letter.equals("_")) {
-                                    builder.append(character);
-                                }
-                            }
-                           
-                            name.setText(builder.toString());
-                       }
-                        
-                        if (name.getText().isEmpty())
-                            name.setText("Modpack_" + Math.random());   
-                      
-                        FilesUtilities.getConfig.saveCreatorName(name.getText());
-                }
+        name.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveCreatorName(name.getText());
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveCreatorName(name.getText());
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                FilesUtilities.getConfig.saveCreatorName(name.getText());
             }
         });
 
@@ -438,7 +343,7 @@ public final class CreateFrame {
                 chooserTitle.setText("<html><h1>Yay, we detected " + version.getItemCount() + " mod loaders</h1></html>");
             } else {
                 createModPack.setEnabled(false);
-                chooserTitle.setText("<html><h1>No mod loaders found in this folder, select your minecraft folder in where you have a known mod loader (Forge/Fabric)<h1></html>");
+                chooserTitle.setText("<html><h1>No forge versions found in this folder, select your minecraft folder in where you have forge<h1></html>");
             }
         }
     }

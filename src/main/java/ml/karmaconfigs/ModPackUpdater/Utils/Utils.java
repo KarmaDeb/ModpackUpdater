@@ -30,12 +30,6 @@ public final class Utils extends MainFrame implements Runnable {
     public static JFrame info;
     public static JLabel infoScrollable;
     public static JLabel bPane = new JLabel();
-
-    static {
-        bPane.setOpaque(true);
-        bPane.setBackground(Color.DARK_GRAY);
-    }
-
     static int configsAmount = 0;
     static HashMap<String, String> debugData = new HashMap<>();
     private static String baseURL = "";
@@ -323,8 +317,11 @@ public final class Utils extends MainFrame implements Runnable {
         if (progress == 1) {
             progress = 0;
         }
-        bar.setValue(progress);
-        barLabel.setText("<html><div><h3>" + title + "</h3></div></html>");
+
+        SimpleFrame.bar.setValue(progress);
+        internal_bar.setValue(progress);
+        SimpleFrame.barLabel.setText("<html><div><h3>" + title + "</h3></div></html>");
+        internal_barLabel.setText("<html><div><h3>" + title + "</h3></div></html>");
     }
 
     public final void displayPackInfo(Modpack modpack) {
@@ -578,22 +575,6 @@ public final class Utils extends MainFrame implements Runnable {
         if (name.isEmpty()) name = "blank_" + blankPacks();
 
         return name;
-    }
-
-    /**
-     * Get the current modpack name
-     *
-     * @return a String
-     */
-    public final String getCurrentModpack() {
-        File modpackInfo = new File(FilesUtilities.getUpdaterDir(), "modpack.info");
-
-        if (modpackInfo.exists()) {
-            CustomFile file = new CustomFile(modpackInfo, false);
-
-            return file.getString("CURRENT", "");
-        }
-        return "";
     }
 
     private void deleteInModFolder(Modpack modpack) {

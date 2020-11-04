@@ -42,7 +42,8 @@ public class MainFrame {
     public static JComboBox<String> modpacks = new JComboBox<>(Modpack.listing.modpacks());
     public static JFrame frame;
     public static JPanel line = new Line();
-    public static JLabel barLabel;
+    public static JProgressBar internal_bar;
+    public static JLabel internal_barLabel;
     public static JScrollPane jsp;
     public static JLabel internal_label = new JLabel();
     static {
@@ -50,7 +51,7 @@ public class MainFrame {
         internal_label.setBackground(Color.DARK_GRAY);
     }
     public static JSplitPane modpackLabel;
-    public static JProgressBar bar;
+
     public static JButton refreshChangelog;
     public static JButton chooseFolder;
     public static File mcFolder;
@@ -206,21 +207,21 @@ public class MainFrame {
         installFolder = FilesUtilities.getConfig.getDownloadDir();
         frame = new JFrame();
 
+        internal_bar = new JProgressBar();
+        internal_bar.setPreferredSize(new Dimension(frame.getWidth(), 1));
+        internal_barLabel = new JLabel();
+
+        internal_barLabel.setHorizontalAlignment(JLabel.CENTER);
+        internal_barLabel.setVerticalAlignment(JLabel.CENTER);
+        internal_barLabel.setText("<html><div><h3>Download status bar</h3></div></html>");
+
+        internal_bar.setValue(0);
+
         try {
             frame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
         } catch (Throwable e) {
             e.printStackTrace();
         }
-
-        bar = new JProgressBar();
-        bar.setPreferredSize(new Dimension(frame.getWidth(), 1));
-        barLabel = new JLabel();
-
-        barLabel.setHorizontalAlignment(JLabel.CENTER);
-        barLabel.setVerticalAlignment(JLabel.CENTER);
-        barLabel.setText("<html><div><h3>Download status bar</h3></div></html>");
-
-        bar.setValue(0);
 
         JComboBox<String> theme = new JComboBox<>(getThemes());
         theme.setSelectedItem(FilesUtilities.getConfig.getTheme());
@@ -294,7 +295,7 @@ public class MainFrame {
         JSplitPane right = new JSplitPane(JSplitPane.VERTICAL_SPLIT, exportUrl, jsp);
 
         JSplitPane barSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-        JSplitPane barStatusSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, bar, barLabel);
+        JSplitPane barStatusSplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, internal_bar, internal_barLabel);
         JSplitPane lineSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, barStatusSplitter, line);
         JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, lineSplit, barSplitter);
 

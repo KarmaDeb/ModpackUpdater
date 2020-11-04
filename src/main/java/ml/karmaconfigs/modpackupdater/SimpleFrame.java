@@ -29,6 +29,8 @@ public class SimpleFrame {
     public static JComboBox<String> modpacks = new JComboBox<>(Modpack.listing.modpacks());
     public static JFrame frame;
     public static File mcFolder = MainFrame.mcFolder;
+    public static JProgressBar bar = new JProgressBar();
+    public static JLabel barLabel = new JLabel();
     public static JScrollPane jsp = new JScrollPane(Utils.bPane);
     public static boolean active = false;
     private static boolean shift = false;
@@ -95,6 +97,14 @@ public class SimpleFrame {
         installFolder = FilesUtilities.getConfig.getDownloadDir();
         frame = new JFrame();
 
+        bar.setPreferredSize(new Dimension(frame.getWidth(), 1));
+
+        barLabel.setHorizontalAlignment(JLabel.CENTER);
+        barLabel.setVerticalAlignment(JLabel.CENTER);
+        barLabel.setText("<html><div><h3>Download status bar</h3></div></html>");
+
+        bar.setValue(0);
+
         try {
             frame.setIconImage(ImageIO.read((MainFrame.class).getResourceAsStream("/logo.png")));
         } catch (Throwable e) {
@@ -124,7 +134,7 @@ public class SimpleFrame {
         JButton version_selector = new JButton("Change version");
         JButton choose_folder = new JButton("Minecraft dir");
 
-        JSplitPane high_split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, MainFrame.barLabel, MainFrame.bar);
+        JSplitPane high_split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, barLabel, bar);
         JSplitPane url_split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dlURL, high_split);
         JSplitPane install_create = new JSplitPane(JSplitPane.VERTICAL_SPLIT, install, creator);
         JSplitPane header_split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, url_split, install_create);
