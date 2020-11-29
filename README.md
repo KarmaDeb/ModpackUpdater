@@ -72,7 +72,8 @@ Don't worry, you can share the .mpu file with your friends/community<br>
 and tell them to open it using the "Open" button<br>
 in the tool<br>
 ![download_locally_final.png](https://raw.githubusercontent.com/KarmaConfigs/ModpackUpdater/master/imgs/download_locally_final.png)<br>
-And the tool should read the local .mpu file<br>
+And say them to click download button after it<br>
+<br>the tool should read from the local .mpu file<br>
 <br>
 <br>
 ### Yay, you're done!
