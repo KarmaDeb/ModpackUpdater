@@ -53,9 +53,9 @@ you must upload these files into ftp://myhost.com/modpacks/mymodpack<br>
 <br>
 ## Wait, I don't have a host
 No problem, we also thought on people who can't pay a host, just share the .mpu<br>
-file with your friends/community and tell them to open it using the "open"<br>
-button of the tool<br>
-
+file with your friends/community<br>
+<br>
+<br>
 ## Nice, but... how to download it?
 It's the most easy thing to do, if you uploaded the modpack to a host<br>
 put that host url into *Download url* input<br>
@@ -65,13 +65,14 @@ You will see that red border, that's because your url isn't pointing<br>
 to the .mpu file you should be uploaded to your host, fix it by<br>
 adding "/<ModpackFileName>.mpu"<br>
 ![download_final.png](https://raw.githubusercontent.com/KarmaConfigs/ModpackUpdater/master/imgs/download_final.png)<br>
-Finally click on "Download" and enjoy!
-  
+Finally click on "Download" and enjoy!<br>
+<br>
 ## But hey, I didn't use the host method
 If you didn't use the host method, tell your users to open<br>
 the .mpu file you sent them previously using the "Open" button<br>
 in the tool<br>
 ![download_locally_final.png](https://raw.githubusercontent.com/KarmaConfigs/ModpackUpdater/master/imgs/download_locally_final.png)<br>
-And the tool should read the local .mpu file
-
+And the tool should read the local .mpu file<br>
+<br>
+<br>
 ### Yay, you're done!
