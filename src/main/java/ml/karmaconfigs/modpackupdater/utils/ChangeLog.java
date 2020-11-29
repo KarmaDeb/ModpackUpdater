@@ -1,6 +1,4 @@
-package ml.karmaconfigs.modpackupdater.versionchecker;
-
-import ml.karmaconfigs.modpackupdater.utils.Utils;
+package ml.karmaconfigs.modpackupdater.utils;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -11,7 +9,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
-public final class Changelog {
+public final class ChangeLog {
 
     private static final ArrayList<String> changelog = new ArrayList<>();
     private static String latest = "0";
@@ -19,13 +17,14 @@ public final class Changelog {
     private static boolean available = true;
 
     /**
-     * Initialize the version checker
+     * Tries to request the changelog
+     *
+     * @throws Throwable if something goes wrong
      */
-    public Changelog() throws Throwable {
-        Utils utils = new Utils();
+    public final void requestChangelog() throws Throwable {
         if (available) {
             changelog.clear();
-            utils.setDebug(utils.rgbColor("Retrieving changelog...", 125, 255, 195), true);
+            Debug.util.add(Text.util.create("Retrieving changelog...", Color.WHITE, 12), true);
             URL url = new URL("https://karmaconfigs.github.io/updates/ModpackUpdater/latest.txt");
             BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
             String word;
@@ -65,8 +64,17 @@ public final class Changelog {
             }, 0, TimeUnit.SECONDS.toMillis(1));
             available = false;
         } else {
-            utils.setDebug(utils.rgbColor("Wait " + back + " seconds before reloading changelog", 220, 100, 100), true);
+            Debug.util.add(Text.util.create("Wait " + back + " seconds before requesting changelog...", Color.INDIANRED, 12), true);
         }
+    }
+
+    /**
+     * Get the latest version of the tool
+     *
+     * @return the latest version of the tool
+     */
+    public final String getVersion() {
+        return latest;
     }
 
     /**
