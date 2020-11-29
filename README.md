@@ -26,7 +26,7 @@ leave credits if you use his mod on a modpack, and yours<br>
 ![creator_pane_author.png](https://raw.githubusercontent.com/KarmaConfigs/ModpackUpdater/master/imgs/creator_pane_author.png)<br>
 <br>
 After setting authors, you must tell the creator what's the version of the modpack<br>
-> ***THIS IS NOT MINECRAFT VERSION***<br>
+***THIS IS NOT MINECRAFT VERSION***<br>
 ![creator_pane_version.png](https://raw.githubusercontent.com/KarmaConfigs/ModpackUpdater/master/imgs/creator_pane_version.png)<br>
 <br>
 Then you must set the modpack description, here you should put<br>
