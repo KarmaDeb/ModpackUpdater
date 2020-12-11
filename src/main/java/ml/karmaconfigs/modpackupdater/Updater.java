@@ -2,6 +2,9 @@ package ml.karmaconfigs.modpackupdater;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 
+import com.therandomlabs.curseapi.CurseAPI;
+import com.therandomlabs.curseapi.game.CurseGame;
+import ml.karmaconfigs.modpackupdater.manager.CurseDownloader;
 import ml.karmaconfigs.modpackupdater.files.MPUExt;
 import ml.karmaconfigs.modpackupdater.files.data.DataReader;
 import ml.karmaconfigs.modpackupdater.files.memory.ClientMemory;
@@ -24,9 +27,8 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Files;
-import java.util.HashSet;
+import java.util.*;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 public final class Updater implements Utils {
@@ -44,6 +46,7 @@ public final class Updater implements Utils {
     private final static JButton download = new JButton("Download");
     private final static JButton create = new JButton("Create");
     private final static JButton open = new JButton("Open");
+    private final static JButton curse = new JButton("<html>Mods<br>manager</html>");
     private final static JButton choose = new JButton("<html>Minecraft<br>directory</html>");
     private final static JButton export = new JButton("Export");
 
@@ -57,8 +60,9 @@ public final class Updater implements Utils {
     private final static JSplitPane download_create = new JSplitPane(JSplitPane.VERTICAL_SPLIT, download, create);
     private final static JSplitPane dc_open = new JSplitPane(JSplitPane.VERTICAL_SPLIT, download_create, open);
     private final static JSplitPane dco_choose = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dc_open, choose);
+    private final static JSplitPane dcoc_curse = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dco_choose, curse);
     private final static JSplitPane scroll_check = new JSplitPane(JSplitPane.VERTICAL_SPLIT, auto_scroll, check_updates);
-    private final static JSplitPane dcoc_sc = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dco_choose, scroll_check);
+    private final static JSplitPane dcoc_sc = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dcoc_curse, scroll_check);
     private final static JSplitPane text_url = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JLabel("        Download url"), url_input);
     private final static JSplitPane url_tool = new JSplitPane(JSplitPane.VERTICAL_SPLIT, text_url, data_debug);
 
@@ -68,6 +72,7 @@ public final class Updater implements Utils {
     private static boolean downloading = false;
     private static boolean shown = false;
     private static boolean available = false;
+    private static boolean advised = false;
     private static int checks = 0;
 
     /**
@@ -89,8 +94,6 @@ public final class Updater implements Utils {
         main_frame.setMaximumSize(size);
         main_frame.setPreferredSize(size);
         main_frame.setSize(size);
-
-        main_frame.setAlwaysOnTop(true);
 
         //What will do the main frame on close
         main_frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -148,6 +151,8 @@ public final class Updater implements Utils {
             download_create.setEnabled(false);
             text_url.setEnabled(false);
             url_tool.setEnabled(false);
+            dco_choose.setEnabled(false);
+            dcoc_curse.setEnabled(false);
 
             data_debug.setDividerLocation(120);
 
@@ -367,6 +372,17 @@ public final class Updater implements Utils {
             opener.initialize();
         });
 
+        curse.addActionListener(e -> {
+            if (!advised)
+                Debug.util.add(Text.util.create("If this is the first time you use CurseForge mod downloader, it will take some minutes to open the window ( to download web browser ), please wait...", Color.LIGHTCORAL, 21), true);
+
+            new AsyncScheduler(() -> {
+                CurseDownloader downloader = new CurseDownloader();
+                downloader.initialize();
+                advised = true;
+            }).run();
+        });
+
         choose.addActionListener(e -> {
             MinecraftChooser chooser = new MinecraftChooser();
             chooser.initialize();
@@ -479,34 +495,36 @@ public final class Updater implements Utils {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (checks >= 3 && available)
-                    shown = false;
-                try {
-                    changelog.requestChangelog();
+                if (check_updates.isSelected()) {
+                    if (checks >= 3 && available)
+                        shown = false;
+                    try {
+                        changelog.requestChangelog();
 
-                    String current = app_ver != null ? app_ver : "0";
-                    String latest = changelog.getVersion();
+                        String current = app_ver != null ? app_ver : "0";
+                        String latest = changelog.getVersion();
 
-                    int c_int = Integer.parseInt(current.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
-                    int l_int = Integer.parseInt(latest.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
+                        int c_int = Integer.parseInt(current.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
+                        int l_int = Integer.parseInt(latest.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
 
-                    if (c_int != l_int) {
-                        if (c_int < l_int) {
-                            available = true;
-                            if (!shown) {
-                                showChangelogDialog();
-                                shown = true;
+                        if (c_int != l_int) {
+                            if (c_int < l_int) {
+                                available = true;
+                                if (!shown) {
+                                    showChangelogDialog();
+                                    shown = true;
+                                }
                             }
                         }
-                    }
-                } catch (Throwable ex) {
-                    Text text = new Text(ex);
-                    text.format(Color.INDIANRED, 14);
+                    } catch (Throwable ex) {
+                        Text text = new Text(ex);
+                        text.format(Color.INDIANRED, 14);
 
-                    Debug.util.add(text, true);
+                        Debug.util.add(text, true);
+                    }
+                    if (available)
+                        checks++;
                 }
-                if (available)
-                    checks++;
             }
         }, 0, TimeUnit.MINUTES.toMillis(1));
     }
@@ -532,6 +550,26 @@ public final class Updater implements Utils {
             UIManager.setLookAndFeel(FlatDarkLaf.class.getName());
 
             initialize();
+
+            Optional<Set<CurseGame>> games = CurseAPI.games();
+            if (games.isPresent()) {
+                for (CurseGame game : games.get()) {
+                    if (game.name().toLowerCase().contains("minecraft")) {
+                        Cache cache = new Cache();
+                        cache.saveMinecraft(game);
+                        break;
+                    }
+                }
+            }
+
+            try {
+                InputStream internal_pagination = (Updater.class).getResourceAsStream("/letters.pagination");
+                File dest = new File(Utils.getUpdaterDir, "letters.pagination");
+                if (dest.exists())
+                    Files.delete(dest.toPath());
+
+                Files.copy(internal_pagination, dest.toPath());
+            } catch (Throwable ignored) {}
 
             KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(ke -> {
                 synchronized (Updater.class) {

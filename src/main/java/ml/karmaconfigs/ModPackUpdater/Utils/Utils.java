@@ -168,6 +168,7 @@ public interface Utils {
     }
 
     File getUpdaterDir = new File(getDataFolder(), "MPU");
+    File htmlCacheDir = new File(getUpdaterDir, "html_cache");
     File logsDir = new File(getUpdaterDir, "logs");
     File getPacksDir = new File(getUpdaterDir, "modpacks");
     File defaultMC = new File(getDataFolder(), ".minecraft");

@@ -1,5 +1,9 @@
 package ml.karmaconfigs.modpackupdater.utils;
 
+import com.therandomlabs.curseapi.game.CurseCategory;
+import com.therandomlabs.curseapi.game.CurseCategorySection;
+import com.therandomlabs.curseapi.game.CurseGame;
+import com.therandomlabs.curseapi.project.CurseSearchQuery;
 import ml.karmaconfigs.modpackupdater.Updater;
 import ml.karmaconfigs.modpackupdater.files.memory.ClientMemory;
 import org.jetbrains.annotations.NotNull;
@@ -10,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Optional;
 
 public final class Cache {
 
@@ -17,6 +22,9 @@ public final class Cache {
     private static File mc_folder = new ClientMemory().getMc();
     private static File mpu_file = null;
     private static String last_debug;
+    private static CurseGame minecraft;
+    private static CurseCategorySection minecraft_mods;
+    private static CurseCategory minecraft_mods_section;
 
     /**
      * Initialize the cache storage
@@ -80,6 +88,27 @@ public final class Cache {
     }
 
     /**
+     * Save the minecraft CurseForge
+     *
+     * @param game the game
+     */
+    public final void saveMinecraft(final CurseGame game) throws Throwable {
+        minecraft = game;
+
+        for (CurseCategory category : minecraft.categories()) {
+            Optional<CurseCategorySection> categories_section = category.section();
+            if (categories_section.isPresent()) {
+                CurseCategorySection section = categories_section.get();
+                if (section.name().toLowerCase().contains("mods")) {
+                    minecraft_mods = section;
+                    minecraft_mods_section = category;
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
      * Get the ico stored in cache
      * to avoid over-requesting to
      * github
@@ -119,5 +148,33 @@ public final class Cache {
     @Nullable
     public final File getMpuFile() {
         return mpu_file;
+    }
+
+    /**
+     * Get the minecraft CurseForge
+     *
+     * @return a minecraft CurseForge instance
+     */
+    @Nullable
+    public final CurseGame getMinecraft() {
+        return minecraft;
+    }
+
+    /**
+     * Get a search query with the minecraft
+     * mods
+     *
+     * @return a minecraft mods search query
+     */
+    @Nullable
+    public final CurseSearchQuery searchQuery() {
+        try {
+            return new CurseSearchQuery()
+                    .game(minecraft)
+                    .category(minecraft_mods_section)
+                    .categorySection(minecraft_mods);
+        } catch (Throwable ex) {
+            return null;
+        }
     }
 }

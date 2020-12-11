@@ -7,12 +7,14 @@ import ml.karmaconfigs.modpackupdater.utils.Utils;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterInputStream;
 
 public final class FileHasher {
 
@@ -54,7 +56,15 @@ public final class FileHasher {
 
         compressor.close();
         out.close();
+
         return compressed;
+    }
+
+    public final void decompress(final File file, final File dest) throws Throwable {
+        if (!dest.getParentFile().exists() && dest.getParentFile().mkdirs())
+            Debug.util.add(Text.util.create("Created directory " + Utils.findPath(dest.getParentFile()), Color.LIGHTGREEN, 12), false);
+
+        FileInputStream fis = new FileInputStream("file2");
     }
 
     public interface external {

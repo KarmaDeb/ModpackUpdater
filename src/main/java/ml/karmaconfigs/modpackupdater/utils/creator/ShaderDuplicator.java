@@ -1,6 +1,6 @@
 package ml.karmaconfigs.modpackupdater.utils.creator;
 
-import ml.karmaconfigs.modpackupdater.Options;
+import ml.karmaconfigs.modpackupdater.Creator;
 import ml.karmaconfigs.modpackupdater.files.FileHasher;
 import ml.karmaconfigs.modpackupdater.files.data.Data;
 import ml.karmaconfigs.modpackupdater.files.data.DataWriter;
@@ -28,19 +28,19 @@ public final class ShaderDuplicator implements Utils {
             if (shaders.exists()) {
                 Debug.util.add(Text.util.create("Starting to copy shaderpack files from " + Utils.findPath(shaders), Color.LIGHTGRAY, 12), true);
 
-                File destDir = new File(Utils.getPackDir(name), "upload/shaderpack");
+                File destDir = new File(Utils.getPackDir(name), "upload/shaderpacks");
 
                 if (!destDir.exists() && destDir.mkdirs())
                     Debug.util.add(Text.util.create("Created directory " + Utils.findPath(destDir), Color.LIGHTGREEN, 12), false);
 
                 for (File shader : shaders.listFiles()) {
                     if (shader.getName().endsWith(".zip") || shader.getName().endsWith(".rar")) {
-                        if (Options.manager.isShaderIncluded(shader.getName())) {
+                        if (Creator.manager.isShaderIncluded(shader.getName())) {
                             try {
                                 FileHasher hasher = new FileHasher(shader);
                                 File dest = hasher.hashAndCompress(destDir);
 
-                                Data data = new Data(dest.getName().substring(0, 2));
+                                Data data = new Data(dest.getName().substring(0, 5));
                                 data.addData("Hash", dest.getName());
                                 data.addData("Size", dest.length());
                                 data.addData("Original", shader.length());

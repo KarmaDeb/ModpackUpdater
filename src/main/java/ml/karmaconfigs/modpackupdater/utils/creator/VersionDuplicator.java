@@ -51,7 +51,7 @@ public final class VersionDuplicator implements Utils {
                             FileHasher hasher = new FileHasher(version);
                             File dest = hasher.hashAndCompress(destDir);
 
-                            Data data = new Data(dest.getName().substring(0, 2));
+                            Data data = new Data(dest.getName().substring(0, 5));
                             data.addData("Hash", dest.getName());
                             data.addData("Size", dest.length());
                             data.addData("Original", version.length());

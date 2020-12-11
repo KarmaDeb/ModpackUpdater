@@ -1,6 +1,6 @@
 package ml.karmaconfigs.modpackupdater.utils.creator;
 
-import ml.karmaconfigs.modpackupdater.Options;
+import ml.karmaconfigs.modpackupdater.Creator;
 import ml.karmaconfigs.modpackupdater.files.FileHasher;
 import ml.karmaconfigs.modpackupdater.files.data.Data;
 import ml.karmaconfigs.modpackupdater.files.data.DataWriter;
@@ -29,12 +29,12 @@ public final class WorldDuplicator implements Utils {
                 if (worlds.exists()) {
                     for (File world : worlds.listFiles()) {
                         if (world.isDirectory()) {
-                            if (Options.manager.isWorldIncluded(world.getName())) {
+                            if (Creator.manager.isWorldIncluded(world.getName())) {
                                 HashSet<String> contents = getFiles(world.getName(), world);
 
                                 String hash = FileHasher.external.hash(world.getName());
 
-                                Data data = new Data(hash.substring(0, 2));
+                                Data data = new Data(hash.substring(0, 5));
                                 File dest_dir = new File(Utils.getPackDir(name) + "/upload/worlds/" + hash);
 
                                 for (String content : contents) {

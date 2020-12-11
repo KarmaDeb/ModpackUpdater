@@ -1,10 +1,11 @@
 package ml.karmaconfigs.modpackupdater;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonReader;
 import ml.karmaconfigs.modpackupdater.files.MPUExt;
+import ml.karmaconfigs.modpackupdater.utils.*;
 import ml.karmaconfigs.modpackupdater.utils.Color;
-import ml.karmaconfigs.modpackupdater.utils.Debug;
-import ml.karmaconfigs.modpackupdater.utils.Text;
-import ml.karmaconfigs.modpackupdater.utils.Utils;
 import ml.karmaconfigs.modpackupdater.utils.creator.*;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.commonmark.Extension;
@@ -17,8 +18,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
-import java.util.ArrayList;
+import java.io.FileReader;
+import java.nio.file.Files;
+import java.util.*;
 import java.util.List;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 
 public final class Creator implements Utils {
 
@@ -59,6 +64,8 @@ public final class Creator implements Utils {
     private final static JSplitPane url_tool = new JSplitPane(JSplitPane.VERTICAL_SPLIT, url, avd_create);
 
     private final static Options options_pane = new Options();
+
+    private static boolean active = false;
 
     /**
      * Initialize the frame to show it
@@ -236,6 +243,8 @@ public final class Creator implements Utils {
                 } else {
                     Options.manager.show();
                     options.setText("Hide options");
+                    Options.manager.toFront();
+                    main_frame.toFront();
                 }
             });
 
@@ -244,11 +253,11 @@ public final class Creator implements Utils {
                 if (version_to_use != null && !version_to_use.replaceAll("\\s", "").isEmpty()) {
                     if (checkInfo()) {
                         try {
-                            File upload_dir = new File(Utils.getPackDir(name_input.getText()), "upload");
-                            if (upload_dir.exists() && upload_dir.delete())
-                                Debug.util.add(Text.util.create("Deleted old upload folder " + Utils.findPath(upload_dir), Color.LIGHTGREEN, 12), true);
+                            File uploads = new File(Utils.getPackDir(name_input.getText()), "upload");
+                            cleanUploads(uploads);
 
-                            String version = Options.listing.getRealVersion(Options.manager.getVersion());
+                            String version = Options.listing.getRealVersion(Options.manager.getVersion()).replace("\"", "");
+                            Debug.util.add(Text.util.create("Detected mc version: " + version, Color.LIGHTGREEN, 12), true);
 
                             ModDuplicator mod_dupe = new ModDuplicator(version);
                             mod_dupe.copyTo(name_input.getText());
@@ -351,18 +360,42 @@ public final class Creator implements Utils {
                 public void windowDeiconified(WindowEvent e) {
                     if (options.getText().equals("Hide options")) {
                         Options.manager.show();
+                        Options.manager.toFront();
+                        main_frame.toFront();
+                        main_frame.dispose();
                     } else {
                         Options.manager.hide();
                     }
                 }
             });
 
-            main_frame.setAlwaysOnTop(true);
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    if (!active) {
+                        if (main_frame.isActive() || Options.options_frame.isActive()) {
+                            active = true;
+                            if (options.getText().equals("Hide options")) {
+                                Options.manager.show();
+                                Options.manager.toFront();
+                                main_frame.toFront();
+                            } else {
+                                Options.manager.hide();
+                            }
+                        }
+                    } else {
+                        active = main_frame.isActive() || Options.options_frame.isActive();
+                    }
+                }
+            }, 0, 1);
 
             initialized = true;
         } else {
             if (options.getText().equals("Hide options")) {
                 Options.manager.show();
+                Options.manager.toFront();
+                main_frame.toFront();
             } else {
                 Options.manager.hide();
             }
@@ -419,6 +452,21 @@ public final class Creator implements Utils {
             }
 
             create.setEnabled(checkInfo());
+        }
+    }
+
+    public interface manager {
+
+        static boolean isWorldIncluded(final String name) {
+            return Options.manager.isWorldIncluded(name);
+        }
+
+        static boolean isTextureIncluded(final String name) {
+            return Options.manager.isTextureIncluded(name.substring(0, name.length() - 4));
+        }
+
+        static boolean isShaderIncluded(final String name) {
+            return Options.manager.isShaderIncluded(name.substring(0, name.length() - 4));
         }
     }
 
@@ -608,5 +656,380 @@ public final class Creator implements Utils {
         }
 
         return lines;
+    }
+
+    private void cleanUploads(final File folder) {
+        if (folder.exists() && folder.delete()) {
+            Debug.util.add(Text.util.create("Deleted old upload folder " + Utils.findPath(folder), Color.LIGHTGREEN, 12), true);
+        } else {
+            for (File file : folder.listFiles()) {
+                if (file.isDirectory()) {
+                    cleanUploads(file);
+                } else {
+                    if (file.isFile() && !file.isDirectory() && file.delete()) {
+                        Debug.util.add(Text.util.create("Deleted old file " + Utils.findPath(file), Color.LIGHTGREEN, 12), true);
+                    }
+                }
+            }
+            try {
+                Files.delete(folder.toPath());
+            } catch (Throwable ex) {
+                Text text = new Text(ex);
+                text.format(Color.INDIANRED, 14);
+
+                Debug.util.add(text, true);
+            }
+        }
+    }
+}
+
+final class Options {
+
+    private static boolean initialized = false;
+
+    protected final static JDialog options_frame = new JDialog();
+
+    private final static Dimension size = new Dimension(250, 393);
+
+    private final static JComboBox<String> versions = new JComboBox<>();
+
+    private final static JPanel selector = new JPanel();
+
+    private final static JScrollPane selector_scroll = new JScrollPane(selector);
+
+    private final static JCheckBox include_worlds = new JCheckBox("Include worlds");
+    private final static JCheckBox include_textures = new JCheckBox("Include textures");
+    private final static JCheckBox include_shaders = new JCheckBox("Include shaders");
+
+    private final static HashSet<String> selected_worlds = new HashSet<>();
+    private final static HashSet<String> selected_textures = new HashSet<>();
+    private final static HashSet<String> selected_shaders = new HashSet<>();
+
+    /**
+     * Initialize the frame to show it
+     * to the user
+     */
+    public final void initialize() {
+        if (!initialized) {
+            options_frame.setTitle("Creator options");
+
+            //Set the main frame size
+            options_frame.setMinimumSize(size);
+            options_frame.setMaximumSize(size);
+            options_frame.setPreferredSize(size);
+            options_frame.setSize(size);
+
+            options_frame.setUndecorated(true);
+            options_frame.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+
+            //Split panes
+            JSplitPane t_shaders = new JSplitPane(JSplitPane.VERTICAL_SPLIT, include_textures, include_shaders);
+            JSplitPane world_pan = new JSplitPane(JSplitPane.VERTICAL_SPLIT, include_worlds, selector_scroll);
+            JSplitPane ts_world = new JSplitPane(JSplitPane.VERTICAL_SPLIT, t_shaders, world_pan);
+            JSplitPane ver_tswol = new JSplitPane(JSplitPane.VERTICAL_SPLIT, versions, ts_world);
+
+            //Component options
+            {
+                t_shaders.setEnabled(false);
+                world_pan.setEnabled(false);
+                ts_world.setEnabled(false);
+                ver_tswol.setEnabled(false);
+
+                selector.setLayout(new BoxLayout(selector, BoxLayout.Y_AXIS));
+                selector_scroll.getVerticalScrollBar().setUnitIncrement(15);
+                selector_scroll.getHorizontalScrollBar().setUnitIncrement(15);
+            }
+
+            //Add all the buttons
+            options_frame.add(ver_tswol);
+
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    new AsyncScheduler(() -> {
+                        int value = selector_scroll.getVerticalScrollBar().getValue();
+                        try {
+                            String selected = versions.getItemAt(versions.getSelectedIndex());
+
+                            versions.removeAllItems();
+                            selector.removeAll();
+                            try {
+                                for (String str : listing.versions()) {
+                                    versions.addItem(str);
+                                }
+                            } catch (Throwable ex) {
+                                Text text = new Text(ex);
+                                text.format(ml.karmaconfigs.modpackupdater.utils.Color.INDIANRED, 14);
+
+                                Debug.util.add(text, true);
+                            }
+
+                            JLabel w_title = new JLabel("Worlds_Title");
+                            selector.add(w_title);
+                            selector.add(new JLabel("\n"));
+                            w_title.setText("<html>" + Text.util.create("Worlds", ml.karmaconfigs.modpackupdater.utils.Color.LIGHTCYAN, 12).getText(true) + "</html>");
+                            for (String world : listing.getWorlds()) {
+                                JCheckBox box = new JCheckBox("World=" + world);
+                                box.setText(world);
+                                box.addActionListener(e -> {
+                                    if (selected_worlds.contains(world)) {
+                                        selected_worlds.remove(world);
+                                    } else {
+                                        selected_worlds.add(world);
+                                    }
+                                });
+                                box.setName(world);
+                                box.setSelected(selected_worlds.contains(world));
+                                selector.add(box);
+
+                                SwingUtilities.invokeLater(() -> {
+                                    SwingUtilities.updateComponentTreeUI(selector);
+                                    for (Component component : selector.getComponents()) {
+                                        if (component != null) {
+                                            SwingUtilities.updateComponentTreeUI(component);
+                                        }
+                                    }
+                                });
+                            }
+
+                            JLabel t_title = new JLabel("Textures_Title");
+                            selector.add(new JLabel("<html>" + Text.util.create("______________", ml.karmaconfigs.modpackupdater.utils.Color.WHITE, 12).getText(true) + "</html>"));
+                            selector.add(t_title);
+                            selector.add(new JLabel("\n"));
+                            t_title.setText("<html>" + Text.util.create("Texture Packs", ml.karmaconfigs.modpackupdater.utils.Color.LIGHTCYAN, 12).getText(true) + "</html>");
+                            for (String texture : listing.getTextures()) {
+                                JCheckBox box = new JCheckBox("Texture=" + texture);
+                                box.setText(texture);
+                                box.addActionListener(e -> {
+                                    if (selected_textures.contains(texture)) {
+                                        selected_textures.remove(texture);
+                                    } else {
+                                        selected_textures.add(texture);
+                                    }
+                                });
+                                box.setName(texture);
+                                box.setSelected(selected_textures.contains(texture));
+                                selector.add(box);
+
+                                SwingUtilities.invokeLater(() -> {
+                                    SwingUtilities.updateComponentTreeUI(selector);
+                                    for (Component component : selector.getComponents()) {
+                                        if (component != null) {
+                                            SwingUtilities.updateComponentTreeUI(component);
+                                        }
+                                    }
+                                });
+                            }
+
+                            JLabel s_title = new JLabel("Textures_Title");
+                            selector.add(new JLabel("<html>" + Text.util.create("______________", ml.karmaconfigs.modpackupdater.utils.Color.WHITE, 12).getText(true) + "</html>"));
+                            selector.add(s_title);
+                            selector.add(new JLabel("\n"));
+                            s_title.setText("<html>" + Text.util.create("Shader Packs", ml.karmaconfigs.modpackupdater.utils.Color.LIGHTCYAN, 12).getText(true) + "</html>");
+                            for (String shader : listing.getShaders()) {
+                                JCheckBox box = new JCheckBox("Shader=" + shader);
+                                box.setText(shader);
+                                box.addActionListener(e -> {
+                                    if (selected_shaders.contains(shader)) {
+                                        selected_shaders.remove(shader);
+                                    } else {
+                                        selected_shaders.add(shader);
+                                    }
+                                });
+                                box.setName(shader);
+                                box.setSelected(selected_shaders.contains(shader));
+                                selector.add(box);
+
+                                SwingUtilities.invokeLater(() -> {
+                                    SwingUtilities.updateComponentTreeUI(selector);
+                                    for (Component component : selector.getComponents()) {
+                                        if (component != null) {
+                                            SwingUtilities.updateComponentTreeUI(component);
+                                        }
+                                    }
+                                });
+                            }
+
+                            SwingUtilities.invokeLater(() -> selector_scroll.getVerticalScrollBar().setValue(value));
+
+                            try {
+                                versions.setSelectedItem(selected);
+                            } catch (Throwable ignored) {
+                            }
+                        } catch (Throwable ex) {
+                            Text text = new Text(ex);
+                            text.format(ml.karmaconfigs.modpackupdater.utils.Color.INDIANRED, 14);
+
+                            Debug.util.add(text, true);
+                        }
+                    }).run();
+                }
+            }, 0, TimeUnit.SECONDS.toMillis(5));
+
+            initialized = true;
+            options_frame.pack();
+        }
+
+        options_frame.setVisible(true);
+    }
+
+    public interface manager {
+
+        static void setLocation(int x, int y) {
+            if (x == -1)
+                x = options_frame.getX();
+
+            if (y == -1)
+                y = options_frame.getY();
+
+            options_frame.setLocation(x, y);
+        }
+
+        static void show() {
+            options_frame.setVisible(true);
+        }
+
+        static void hide() {
+            options_frame.setVisible(false);
+        }
+
+        static void toFront() {
+            options_frame.toFront();
+        }
+
+        static String getVersion() {
+            return versions.getItemAt(versions.getSelectedIndex());
+        }
+
+        static boolean includeSaves() {
+            return include_worlds.isSelected();
+        }
+
+        static boolean includeTextures() {
+            return include_textures.isSelected();
+        }
+
+        static boolean includeShaders() {
+            return include_shaders.isSelected();
+        }
+
+        static boolean isWorldIncluded(final String name) {
+            return selected_worlds.contains(name);
+        }
+
+        static boolean isTextureIncluded(final String name) {
+            return selected_textures.contains(name.substring(0, name.length() - 4));
+        }
+
+        static boolean isShaderIncluded(final String name) {
+            return selected_shaders.contains(name.substring(0, name.length() - 4));
+        }
+    }
+
+    interface listing {
+
+        static ArrayList<String> versions() throws Throwable {
+            Cache cache = new Cache();
+
+            File vFolder = new File(cache.getMcFolder() + "/versions");
+            File[] versions = vFolder.listFiles();
+            ArrayList<String> names = new ArrayList<>();
+            if (versions != null && !Arrays.asList(versions).isEmpty()) {
+                for (File version : versions) {
+                    String name = version.getName();
+                    if (name.contains("forge") || name.contains("Forge") || name.contains("liteloader") || name.contains("LiteLoader")) {
+                        File json = new File(version, name + ".json");
+                        if (json.exists()) {
+                            FileReader reader = new FileReader(json);
+                            Gson gson = new Gson().newBuilder().setPrettyPrinting().create();
+                            JsonReader json_reader = new JsonReader(reader);
+                            json_reader.setLenient(true);
+
+                            JsonObject info = gson.fromJson(json_reader, JsonObject.class);
+
+                            if (info.has("id")) {
+                                if (info.get("id").toString().contains("forge") || info.get("id").toString().contains("LiteLoader")) {
+                                    names.add(name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return names;
+        }
+
+        static String getRealVersion(String version) throws Throwable {
+            Cache cache = new Cache();
+
+            File json = new File(cache.getMcFolder() + "/versions/" + version + "/" + version + ".json");
+            if (json.exists()) {
+                FileReader reader = new FileReader(json);
+                Gson gson = new Gson().newBuilder().setPrettyPrinting().create();
+                JsonReader json_reader = new JsonReader(reader);
+                json_reader.setLenient(true);
+
+                JsonObject info = gson.fromJson(json_reader, JsonObject.class);
+
+                if (info.has("inheritsFrom")) {
+                    return info.get("inheritsFrom").toString();
+                }
+            }
+
+            return "";
+        }
+
+        static ArrayList<String> getWorlds() {
+            Cache cache = new Cache();
+
+            File wFolder = new File(cache.getMcFolder() + "/saves");
+            File[] worlds = wFolder.listFiles();
+            ArrayList<String> names = new ArrayList<>();
+            if (worlds != null && !Arrays.asList(worlds).isEmpty()) {
+                for (File world : worlds) {
+                    if (world.isDirectory()) {
+                        names.add(world.getName());
+                    }
+                }
+            }
+
+            return names;
+        }
+
+        static ArrayList<String> getTextures() {
+            Cache cache = new Cache();
+
+            File tFolder = new File(cache.getMcFolder() + "/resourcepacks");
+            File[] textures = tFolder.listFiles();
+            ArrayList<String> names = new ArrayList<>();
+            if (textures != null && !Arrays.asList(textures).isEmpty()) {
+                for (File texture : textures) {
+                    if (texture.getName().endsWith(".zip") || texture.getName().endsWith(".rar")) {
+                        names.add(texture.getName().substring(0, texture.getName().length() - 4));
+                    }
+                }
+            }
+
+            return names;
+        }
+
+        static ArrayList<String> getShaders() {
+            Cache cache = new Cache();
+
+            File sFolder = new File(cache.getMcFolder() + "/shaderpacks");
+            File[] shaders = sFolder.listFiles();
+            ArrayList<String> names = new ArrayList<>();
+            if (shaders != null && !Arrays.asList(shaders).isEmpty()) {
+                for (File shader : shaders) {
+                    if (shader.getName().endsWith(".zip") || shader.getName().endsWith(".rar")) {
+                        names.add(shader.getName().substring(0, shader.getName().length() - 4));
+                    }
+                }
+            }
+
+            return names;
+        }
     }
 }

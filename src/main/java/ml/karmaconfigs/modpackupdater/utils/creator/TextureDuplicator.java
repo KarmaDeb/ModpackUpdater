@@ -1,6 +1,6 @@
 package ml.karmaconfigs.modpackupdater.utils.creator;
 
-import ml.karmaconfigs.modpackupdater.Options;
+import ml.karmaconfigs.modpackupdater.Creator;
 import ml.karmaconfigs.modpackupdater.files.FileHasher;
 import ml.karmaconfigs.modpackupdater.files.data.Data;
 import ml.karmaconfigs.modpackupdater.files.data.DataWriter;
@@ -35,12 +35,12 @@ public final class TextureDuplicator implements Utils {
 
                 for (File texture : textures.listFiles()) {
                     if (texture.getName().endsWith(".zip") || texture.getName().endsWith(".rar")) {
-                        if (Options.manager.isTextureIncluded(texture.getName())) {
+                        if (Creator.manager.isTextureIncluded(texture.getName())) {
                             try {
                                 FileHasher hasher = new FileHasher(texture);
                                 File dest = hasher.hashAndCompress(destDir);
 
-                                Data data = new Data(dest.getName().substring(0, 2));
+                                Data data = new Data(dest.getName().substring(0, 5));
                                 data.addData("Hash", dest.getName());
                                 data.addData("Size", dest.length());
                                 data.addData("Original", texture.length());

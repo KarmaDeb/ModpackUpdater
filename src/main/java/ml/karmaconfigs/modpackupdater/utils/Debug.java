@@ -7,6 +7,8 @@ import javax.swing.*;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.*;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 
 public final class Debug implements Utils {
 
@@ -73,7 +75,7 @@ public final class Debug implements Utils {
                     Calendar calendar = GregorianCalendar.getInstance();
 
                     String timestamp = "[" + calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND) + "] ";
-                    String old = debug_label.getText()
+                    String old = (debug_label.getText() != null ? debug_label.getText() : "")
                             .replace("<html>", "").replace("</html>", "")
                             .replace("<head>", "").replace("</head>", "")
                             .replace("<body>", "").replace("</body>", "");
@@ -89,7 +91,13 @@ public final class Debug implements Utils {
                     }
                 }
             } catch (Throwable e) {
-                e.printStackTrace();
+                Timer timer = new Timer();
+                timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        add(text, space);
+                    }
+                }, TimeUnit.SECONDS.toMillis(3));
             }
         }
 
@@ -101,7 +109,7 @@ public final class Debug implements Utils {
                 Calendar calendar = GregorianCalendar.getInstance();
 
                 String timestamp = "[" + calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND) + "] ";
-                String old = debug_label.getText()
+                String old = (debug_label.getText() != null ? debug_label.getText() : "")
                         .replace("<html>", "").replace("</html>", "")
                         .replace("<head>", "").replace("</head>", "")
                         .replace("<body>", "").replace("</body>", "");
