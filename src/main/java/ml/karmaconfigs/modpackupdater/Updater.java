@@ -587,13 +587,25 @@ public final class Updater implements Utils {
         }
     }
 
+    public interface external {
+
+        boolean isDownloading = downloading;
+
+        static void checkFiles(final MPUExt modpack) {
+            reader = new DataReader(modpack);
+            reader.downloadData();
+            downloadModpack(modpack, false, true);
+        }
+    }
+
     /**
      * Download the modpack mods
      *
      * @param modpack the modpack
      * @param force force the files download
+     * @param isCheck is a modpack files check
      */
-    private static void downloadModpack(final MPUExt modpack, final boolean force) {
+    private static void downloadModpack(final MPUExt modpack, final boolean force, final boolean isCheck) {
         downloading = true;
 
         Timer timer = new Timer();
@@ -616,7 +628,7 @@ public final class Updater implements Utils {
                                         if (downloader.isDownloaded()) {
                                             cancel();
                                             try {
-                                                downloadVersions(modpack, force);
+                                                downloadVersions(modpack, force, isCheck);
                                             } catch (Throwable ex) {
                                                 Text text = new Text(ex);
                                                 text.format(Color.INDIANRED, 14);
@@ -628,7 +640,7 @@ public final class Updater implements Utils {
                                 }, 0, 1);
                             } else {
                                 try {
-                                    downloadVersions(modpack, force);
+                                    downloadVersions(modpack, force, isCheck);
                                 } catch (Throwable ex) {
                                     Text text = new Text(ex);
                                     text.format(Color.INDIANRED, 14);
@@ -653,8 +665,9 @@ public final class Updater implements Utils {
      *
      * @param modpack the modpack
      * @param force force the files download
+     * @param isCheck is a modpack files check
      */
-    private static void downloadVersions(final MPUExt modpack, final boolean force) throws Throwable {
+    private static void downloadVersions(final MPUExt modpack, final boolean force, final boolean isCheck) throws Throwable {
         HashSet<Resource> resources = reader.getVersions();
         if (!resources.isEmpty()) {
             ResourceDownloader downloader = new ResourceDownloader(modpack, resources, force);
@@ -667,7 +680,7 @@ public final class Updater implements Utils {
                     if (downloader.isDownloaded()) {
                         cancel();
                         try {
-                            downloadResources(modpack, force);
+                            downloadResources(modpack, force, isCheck);
                         } catch (Throwable ex) {
                             Text text = new Text(ex);
                             text.format(Color.INDIANRED, 14);
@@ -679,7 +692,7 @@ public final class Updater implements Utils {
             }, 0, 1);
         } else {
             try {
-                downloadResources(modpack, force);
+                downloadResources(modpack, force, isCheck);
             } catch (Throwable ex) {
                 Text text = new Text(ex);
                 text.format(Color.INDIANRED, 14);
@@ -694,8 +707,9 @@ public final class Updater implements Utils {
      *
      * @param modpack the modpack
      * @param force force the files download
+     * @param isCheck is a modpack files check
      */
-    private static void downloadResources(final MPUExt modpack, final boolean force) throws Throwable {
+    private static void downloadResources(final MPUExt modpack, final boolean force, final boolean isCheck) throws Throwable {
         HashSet<Resource> resources = reader.getResourcepacks();
         if (!resources.isEmpty()) {
             ResourceDownloader downloader = new ResourceDownloader(modpack, resources, force);
@@ -708,7 +722,7 @@ public final class Updater implements Utils {
                     if (downloader.isDownloaded()) {
                         cancel();
                         try {
-                            downloadShaders(modpack, force);
+                            downloadShaders(modpack, force, isCheck);
                         } catch (Throwable ex) {
                             Text text = new Text(ex);
                             text.format(Color.INDIANRED, 14);
@@ -720,7 +734,7 @@ public final class Updater implements Utils {
             }, 0, 1);
         } else {
             try {
-                downloadShaders(modpack, force);
+                downloadShaders(modpack, force, isCheck);
             } catch (Throwable ex) {
                 Text text = new Text(ex);
                 text.format(Color.INDIANRED, 14);
@@ -735,8 +749,9 @@ public final class Updater implements Utils {
      *
      * @param modpack the modpack
      * @param force force the files download
+     * @param isCheck is a modpack files check
      */
-    private static void downloadShaders(final MPUExt modpack, final boolean force) throws Throwable {
+    private static void downloadShaders(final MPUExt modpack, final boolean force, final boolean isCheck) throws Throwable {
         HashSet<Resource> resources = reader.getShaderpacks();
         if (!resources.isEmpty()) {
             ResourceDownloader downloader = new ResourceDownloader(modpack, resources, force);
@@ -749,7 +764,7 @@ public final class Updater implements Utils {
                     if (downloader.isDownloaded()) {
                         cancel();
                         try {
-                            downloadWorlds(modpack, force);
+                            downloadWorlds(modpack, force, isCheck);
                         } catch (Throwable ex) {
                             Text text = new Text(ex);
                             text.format(Color.INDIANRED, 14);
@@ -761,7 +776,7 @@ public final class Updater implements Utils {
             }, 0, 1);
         } else {
             try {
-                downloadWorlds(modpack, force);
+                downloadWorlds(modpack, force, isCheck);
             } catch (Throwable ex) {
                 Text text = new Text(ex);
                 text.format(Color.INDIANRED, 14);
@@ -776,8 +791,9 @@ public final class Updater implements Utils {
      *
      * @param modpack the modpack
      * @param force force the files download
+     * @param isCheck is a modpack files check
      */
-    private static void downloadWorlds(final MPUExt modpack, final boolean force) throws Throwable {
+    private static void downloadWorlds(final MPUExt modpack, final boolean force, final boolean isCheck) throws Throwable {
         HashSet<Resource> resources = reader.getWorlds();
         if (!resources.isEmpty()) {
             ResourceDownloader downloader = new ResourceDownloader(modpack, resources, force);
@@ -798,8 +814,10 @@ public final class Updater implements Utils {
                         Debug.util.add(modpack.getDescription(), true);
                         downloading = false;
 
-                        Launcher launcher = new Launcher(modpack);
-                        launcher.initialize();
+                        if (!isCheck) {
+                            Launcher launcher = new Launcher(modpack);
+                            launcher.initialize();
+                        }
                     }
                 }
             }, 0, 1);
@@ -813,8 +831,10 @@ public final class Updater implements Utils {
             Debug.util.add(modpack.getDescription(), true);
             downloading = false;
 
-            Launcher launcher = new Launcher(modpack);
-            launcher.initialize();
+            if (!isCheck) {
+                Launcher launcher = new Launcher(modpack);
+                launcher.initialize();
+            }
         }
 
         Cache cache = new Cache();
@@ -863,7 +883,7 @@ public final class Updater implements Utils {
             try {
                 reader = new DataReader(modpack);
                 reader.downloadData();
-                downloadModpack(modpack, force);
+                downloadModpack(modpack, force, false);
             } catch (Throwable ex) {
                 Text text = new Text(ex);
                 text.format(Color.INDIANRED, 14);

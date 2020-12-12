@@ -12,6 +12,7 @@ import java.awt.event.ItemEvent;
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 public final class Launcher {
 
@@ -107,34 +108,58 @@ public final class Launcher {
             launcher_frame.add(panel_buttons);
 
             launch.addActionListener(e -> {
-                if (cache.isLaunching() || cache.isDownloadingJava()) {
+                if (cache.isLaunching() || cache.isDownloadingJava() || Updater.external.isDownloading) {
+                    if (cache.isLaunching()) {
+                        Debug.util.add(Text.util.create("A minecraft instance is already running", Color.INDIANRED, 12), false);
+                    }
                     if (cache.isDownloadingJava()) {
                         Debug.util.add(Text.util.create("Please wait until the tool downloads and unzips java for minecraft", Color.INDIANRED, 12), true);
+                    }
+                    if (Updater.external.isDownloading) {
+                        Debug.util.add(Text.util.create("Please wait until the tool verifies modpack files...", Color.INDIANRED, 12), true);
                     }
                     return;
                 }
 
                 MPUExt modpack = getSelectedModpack();
                 if (modpack != null) {
-                    Cache cache = new Cache();
-                    cache.saveModpackMc(modpack);
-                    new AsyncScheduler(() -> {
-                        API_Interface API = new API_Interface();
-                        API.setMemory(Utils.l_memory.getMaxMemory());
-                        API.setMinMemory(Utils.l_memory.getMinMemory());
-                        API.downloadVersionManifest();
-                        API.downloadMinecraft(modpack.getMcVersion(), false);
-                        API.downloadProfile(Utils.l_memory.getName());
-                        API.setJavaPath(Utils.javaDir.getAbsolutePath().replaceAll("\\\\", "/") + "/bin/javaw.exe");
-                        API.runMinecraft(Utils.l_memory.getName(), modpack.getMcVersion(), true, false);
-                    }).run();
+                    Debug.util.add(Text.util.create("Verifying modpack files before trying to launch it, please wait...", Color.LIGHTGREEN, 12), true);
+                    Updater.external.checkFiles(modpack);
+
+                    Timer timer = new Timer();
+                    timer.schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (!Updater.external.isDownloading) {
+                                Cache cache = new Cache();
+                                cache.saveModpackMc(modpack);
+                                new AsyncScheduler(() -> {
+                                    API_Interface API = new API_Interface();
+                                    API.setMemory(Utils.l_memory.getMaxMemory());
+                                    API.setMinMemory(Utils.l_memory.getMinMemory());
+                                    API.downloadVersionManifest();
+                                    API.downloadMinecraft(modpack.getMcVersion(), false);
+                                    API.downloadProfile(Utils.l_memory.getName());
+                                    API.setJavaPath(Utils.javaDir.getAbsolutePath().replaceAll("\\\\", "/") + "/bin/javaw.exe");
+                                    API.runMinecraft(Utils.l_memory.getName(), modpack.getMcVersion(), true, false);
+                                }).run();
+                                cancel();
+                            }
+                        }
+                    }, 0, TimeUnit.SECONDS.toMillis(1));
                 }
             });
 
             launch_vanilla.addActionListener(e -> {
-                if (cache.isLaunching() || cache.isDownloadingJava()) {
+                if (cache.isLaunching() || cache.isDownloadingJava() || Updater.external.isDownloading) {
+                    if (cache.isLaunching()) {
+                        Debug.util.add(Text.util.create("A minecraft instance is already running", Color.INDIANRED, 12), false);
+                    }
                     if (cache.isDownloadingJava()) {
                         Debug.util.add(Text.util.create("Please wait until the tool downloads and unzips java for minecraft", Color.INDIANRED, 12), true);
+                    }
+                    if (Updater.external.isDownloading) {
+                        Debug.util.add(Text.util.create("Please wait until the tool verifies modpack files...", Color.INDIANRED, 12), true);
                     }
                     return;
                 }
