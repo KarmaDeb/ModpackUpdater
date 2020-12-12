@@ -2,8 +2,6 @@ package ml.karmaconfigs.modpackupdater;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 
-import com.therandomlabs.curseapi.CurseAPI;
-import com.therandomlabs.curseapi.game.CurseGame;
 import ml.karmaconfigs.modpackupdater.manager.CurseDownloader;
 import ml.karmaconfigs.modpackupdater.files.MPUExt;
 import ml.karmaconfigs.modpackupdater.files.data.DataReader;
@@ -46,8 +44,9 @@ public final class Updater implements Utils {
     private final static JButton download = new JButton("Download");
     private final static JButton create = new JButton("Create");
     private final static JButton open = new JButton("Open");
-    private final static JButton curse = new JButton("<html>Mods<br>manager</html>");
     private final static JButton choose = new JButton("<html>Minecraft<br>directory</html>");
+    private final static JButton curse = new JButton("<html>Mods<br>manager</html>");
+    private final static JButton launch = new JButton("Launcher");
     private final static JButton export = new JButton("Export");
 
     private final static JCheckBox auto_scroll = new JCheckBox("Auto scroll");
@@ -61,8 +60,9 @@ public final class Updater implements Utils {
     private final static JSplitPane dc_open = new JSplitPane(JSplitPane.VERTICAL_SPLIT, download_create, open);
     private final static JSplitPane dco_choose = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dc_open, choose);
     private final static JSplitPane dcoc_curse = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dco_choose, curse);
+    private final static JSplitPane dcocc_launch = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dcoc_curse, launch);
     private final static JSplitPane scroll_check = new JSplitPane(JSplitPane.VERTICAL_SPLIT, auto_scroll, check_updates);
-    private final static JSplitPane dcoc_sc = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dcoc_curse, scroll_check);
+    private final static JSplitPane dcoc_sc = new JSplitPane(JSplitPane.VERTICAL_SPLIT, dcocc_launch, scroll_check);
     private final static JSplitPane text_url = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JLabel("        Download url"), url_input);
     private final static JSplitPane url_tool = new JSplitPane(JSplitPane.VERTICAL_SPLIT, text_url, data_debug);
 
@@ -144,6 +144,8 @@ public final class Updater implements Utils {
             auto_scroll.setToolTipText("Scroll automatically when there's new" +
                     "\noutput in the debug panel");
             check_updates.setToolTipText("Enable version-checks periodically\nCTRL + Click to show changelog");
+            curse.setToolTipText("Open a built-in nav browser in curseforge to\ndownload mods or manage installed mods");
+            launch.setToolTipText("Open the built-in minecraft launcher to\nlaunch any modpack you have installed");
 
             //Splitters
             debug_export.setEnabled(false);
@@ -153,6 +155,7 @@ public final class Updater implements Utils {
             url_tool.setEnabled(false);
             dco_choose.setEnabled(false);
             dcoc_curse.setEnabled(false);
+            dcocc_launch.setEnabled(false);
 
             data_debug.setDividerLocation(120);
 
@@ -162,7 +165,10 @@ public final class Updater implements Utils {
             dc_open.setDividerLocation(48);
             dc_open.setDividerSize(5);
 
+            dco_choose.setDividerSize(20);
             dco_choose.setDividerLocation(72);
+
+            dcocc_launch.setDividerSize(20);
 
             SwingUtilities.invokeLater(() -> {
                 try {
@@ -383,6 +389,11 @@ public final class Updater implements Utils {
             }).run();
         });
 
+        launch.addActionListener(e -> {
+            Launcher launcher = new Launcher();
+            launcher.initialize();
+        });
+
         choose.addActionListener(e -> {
             MinecraftChooser chooser = new MinecraftChooser();
             chooser.initialize();
@@ -550,26 +561,6 @@ public final class Updater implements Utils {
             UIManager.setLookAndFeel(FlatDarkLaf.class.getName());
 
             initialize();
-
-            Optional<Set<CurseGame>> games = CurseAPI.games();
-            if (games.isPresent()) {
-                for (CurseGame game : games.get()) {
-                    if (game.name().toLowerCase().contains("minecraft")) {
-                        Cache cache = new Cache();
-                        cache.saveMinecraft(game);
-                        break;
-                    }
-                }
-            }
-
-            try {
-                InputStream internal_pagination = (Updater.class).getResourceAsStream("/letters.pagination");
-                File dest = new File(Utils.getUpdaterDir, "letters.pagination");
-                if (dest.exists())
-                    Files.delete(dest.toPath());
-
-                Files.copy(internal_pagination, dest.toPath());
-            } catch (Throwable ignored) {}
 
             KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(ke -> {
                 synchronized (Updater.class) {
@@ -800,26 +791,34 @@ public final class Updater implements Utils {
                         cancel();
                         Debug.util.add(Text.util.create("Modpack " + modpack.getName() + " info:", Color.WHITE, 12), true);
                         Debug.util.add(Text.util.create("Version: " + modpack.getVersion(), Color.WHITE, 12), false);
+                        Debug.util.add(Text.util.create("Mc version: " + modpack.getMcVersion() + " based on " + modpack.getRealVersion(), Color.WHITE, 12), false);
                         Debug.util.add(Text.util.create("Authors: ", Color.WHITE, 12), false);
                         for (String author : modpack.getAuthors())
                             Debug.util.add(Text.util.create(author, Color.LIGHTGRAY, 12), false);
                         Debug.util.add(modpack.getDescription(), true);
                         downloading = false;
+
+                        Launcher launcher = new Launcher(modpack);
+                        launcher.initialize();
                     }
                 }
             }, 0, 1);
         } else {
             Debug.util.add(Text.util.create("Modpack " + modpack.getName() + " info:", Color.WHITE, 12), true);
             Debug.util.add(Text.util.create("Version: " + modpack.getVersion(), Color.WHITE, 12), false);
+            Debug.util.add(Text.util.create("Mc version: " + modpack.getMcVersion() + " based on " + modpack.getRealVersion(), Color.WHITE, 12), false);
             Debug.util.add(Text.util.create("Authors: ", Color.WHITE, 12), false);
             for (String author : modpack.getAuthors())
                 Debug.util.add(Text.util.create(author, Color.LIGHTGRAY, 12), false);
             Debug.util.add(modpack.getDescription(), true);
             downloading = false;
+
+            Launcher launcher = new Launcher(modpack);
+            launcher.initialize();
         }
 
         Cache cache = new Cache();
-        File copy = new File(cache.getMcFolder(), modpack.getName() + ".mpu");
+        File copy = new File(Utils.getPackMc(modpack), modpack.getName() + ".mpu");
         File original = new File(Utils.getPackDir(modpack.getName()), modpack.getName() + ".mpu");
 
         if (copy.exists())
@@ -838,7 +837,7 @@ public final class Updater implements Utils {
             icon = new ImageIcon(cache.getIco());
 
         int i;
-        File copy = new File(cache.getMcFolder(), modpack.getName() + ".mpu");
+        File copy = new File(Utils.getPackMc(modpack), modpack.getName() + ".mpu");
 
         if (copy.exists() && !force) {
             MPUExt copy_mpu = new MPUExt(copy);

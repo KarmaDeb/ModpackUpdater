@@ -88,6 +88,13 @@ public final class CurseDownloader {
 
             Utils.toCenter(main_frame);
 
+            back.setToolTipText("Go to the previous page");
+            forward.setToolTipText("Return to the previous page");
+            open_in_browser.setToolTipText("Open the current page in your browser");
+            download.setToolTipText("Download the current mod");
+            manage.setToolTipText("Open the mod manager tool window");
+            url_input.setToolTipText("The current page url");
+
             client.getCefClient().addDisplayHandler(new CefDisplayHandlerAdapter() {
                 @Override
                 public boolean onTooltip(CefBrowser cefBrowser, String s) {
@@ -309,6 +316,11 @@ final class ModManager {
                 @Override
                 public void run() {
                     File mods_folder = new File(cache.getMcFolder(), "mods");
+
+                    disable_selected.setToolTipText("Disable all the selected mods ( " + selected_mods.size() + " )");
+                    enable_selected.setToolTipText("Enable all the selected mods ( " + selected_mods.size() + " )");
+                    remove_selected.setToolTipText("Remove all the selected mods ( " + selected_mods.size() + " )");
+
                     if (hasModifications(getSubdirectories(mods_folder))) {
                         selected_mods.clear();
                         box_file.clear();
@@ -405,6 +417,9 @@ final class ModManager {
                         JMenuItem disable = new JMenuItem("Disable");
                         JMenuItem delete = new JMenuItem("Delete");
 
+                        disable.setToolTipText("Disable the mod " + mod.getName().replace(".jar", ""));
+                        delete.setToolTipText("Remove the mod " + mod.getName().replace(".jar", ""));
+
                         disable.addActionListener(ev -> {
                             try {
                                 File dest_file = new File(mod.getAbsolutePath().replace(mod.getName(), mod.getName().replace(".jar", "")));
@@ -483,6 +498,10 @@ final class ModManager {
                     JMenuItem unselect_all = new JMenuItem("Unselect all");
                     JMenuItem invert_selection = new JMenuItem("Invert selection");
 
+                    select_all.setToolTipText("Select all the mods located at " + folder.getName());
+                    unselect_all.setToolTipText("Unselect all the located at " + folder.getName());
+                    invert_selection.setToolTipText("Invert the mod selections located at " + folder.getName());
+
                     select_all.addActionListener(ev -> {
                         for (JCheckBox box : boxes) {
                             box.setSelected(true);
@@ -549,10 +568,13 @@ final class ModManager {
 
                     JPopupMenu mod_manager = new JPopupMenu("Mod " + mod_item.getText() + " manager");
 
-                    JMenuItem disable = new JMenuItem("Enable");
+                    JMenuItem enable = new JMenuItem("Enable");
                     JMenuItem delete = new JMenuItem("Delete");
 
-                    disable.addActionListener(ev -> {
+                    enable.setToolTipText("Enable the mod " + mod.getName());
+                    delete.setToolTipText("Remove the mod " + mod.getName());
+
+                    enable.addActionListener(ev -> {
                         try {
                             File dest_file = new File(mod.getAbsolutePath().replace(mod.getName(), mod.getName() + ".jar"));
                             Files.move(mod.toPath(), dest_file.toPath());
@@ -571,7 +593,7 @@ final class ModManager {
                         mod_manager.setVisible(false);
                     });
 
-                    mod_manager.add(disable);
+                    mod_manager.add(enable);
                     mod_manager.add(delete);
 
                     mod_item.addMouseListener(new MouseAdapter() {
@@ -627,6 +649,10 @@ final class ModManager {
                         JMenuItem select_all = new JMenuItem("Select all");
                         JMenuItem unselect_all = new JMenuItem("Unselect all");
                         JMenuItem invert_selection = new JMenuItem("Invert selection");
+
+                        select_all.setToolTipText("Select all the disabled mods");
+                        unselect_all.setToolTipText("Unselect all the disabled mods");
+                        invert_selection.setToolTipText("Invert the selection of disabled mods");
 
                         select_all.addActionListener(ev -> {
                             for (JCheckBox box : disabled_boxes) {

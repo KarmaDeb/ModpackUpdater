@@ -42,8 +42,7 @@ public final class ResourceDownloader implements Utils {
         new AsyncScheduler(() -> {
             terminated = false;
             try {
-                Cache cache = new Cache();
-
+                File mc_dir = Utils.getPackMc(modpack);
                 boolean sent = false;
 
                 for (Resource resource : resources) {
@@ -82,7 +81,7 @@ public final class ResourceDownloader implements Utils {
                             } else {
                                 Debug.util.add(Text.util.create("Skipped " + formatLength(mod.getRealSize()) + " update of mod " + mod.getName() + " ( Already downloaded )", Color.WHITE, 12), false);
 
-                                File mod_file = new File(cache.getMcFolder() + File.separator + "mods", mod.getName());
+                                File mod_file = new File(mc_dir + File.separator + "mods", mod.getName());
 
                                 if (hard && mod_file.exists())
                                     Files.delete(mod_file.toPath());
@@ -123,7 +122,7 @@ public final class ResourceDownloader implements Utils {
                         in.close();
                         out.close();
 
-                        File mod_file = new File(cache.getMcFolder() + File.separator + "mods", mod.getName());
+                        File mod_file = new File(mc_dir + File.separator + "mods", mod.getName());
 
                         if (hard && mod_file.exists())
                             Files.delete(mod_file.toPath());
@@ -181,7 +180,7 @@ public final class ResourceDownloader implements Utils {
                                 } else {
                                     Debug.util.add(Text.util.create("Skipped " + formatLength(version.getRealSize()) + " update of version " + version.getName() + " ( Already downloaded )", Color.WHITE, 12), false);
 
-                                    File version_file = new File(cache.getMcFolder(), version.getName());
+                                    File version_file = new File(mc_dir, version.getName());
 
                                     if (hard && version_file.exists())
                                         Files.delete(version_file.toPath());
@@ -222,7 +221,7 @@ public final class ResourceDownloader implements Utils {
                             in.close();
                             out.close();
 
-                            File version_file = new File(cache.getMcFolder(), version.getName());
+                            File version_file = new File(mc_dir, version.getName());
 
                             if (hard && version_file.exists())
                                 Files.delete(version_file.toPath());
@@ -280,7 +279,7 @@ public final class ResourceDownloader implements Utils {
                                     } else {
                                         Debug.util.add(Text.util.create("Skipped " + formatLength(texture.getRealSize()) + " update of resourcepack " + texture.getName() + " ( Already downloaded )", Color.WHITE, 12), false);
 
-                                        File texture_file = new File(cache.getMcFolder(), texture.getName());
+                                        File texture_file = new File(mc_dir, texture.getName());
 
                                         if (hard && texture_file.exists())
                                             Files.delete(texture_file.toPath());
@@ -321,7 +320,7 @@ public final class ResourceDownloader implements Utils {
                                 in.close();
                                 out.close();
 
-                                File texture_file = new File(cache.getMcFolder(), texture.getName());
+                                File texture_file = new File(mc_dir, texture.getName());
 
                                 if (hard && texture_file.exists())
                                     Files.delete(texture_file.toPath());
@@ -379,7 +378,7 @@ public final class ResourceDownloader implements Utils {
                                         } else {
                                             Debug.util.add(Text.util.create("Skipped " + formatLength(shader.getRealSize()) + " update of shaderpack " + shader.getName() + " ( Already downloaded )", Color.WHITE, 12), false);
 
-                                            File shader_file = new File(cache.getMcFolder(), shader.getName());
+                                            File shader_file = new File(mc_dir, shader.getName());
 
                                             if (hard && shader_file.exists())
                                                 Files.delete(shader_file.toPath());
@@ -420,7 +419,7 @@ public final class ResourceDownloader implements Utils {
                                     in.close();
                                     out.close();
 
-                                    File shader_file = new File(cache.getMcFolder(), shader.getName());
+                                    File shader_file = new File(mc_dir, shader.getName());
 
                                     if (hard && shader_file.exists())
                                         Files.delete(shader_file.toPath());
@@ -452,7 +451,7 @@ public final class ResourceDownloader implements Utils {
                                         World world = (World) resource;
                                         HashMap<String, String> hash_path = world.getHashPathMap();
 
-                                        File w_folder = new File(cache.getMcFolder(), "saves");
+                                        File w_folder = new File(mc_dir, "saves");
                                         File wd_folder = new File(w_folder, world.getName());
 
                                         for (String hash : hash_path.keySet()) {
@@ -486,7 +485,7 @@ public final class ResourceDownloader implements Utils {
                                                 in.close();
                                                 out.close();
 
-                                                File world_file = new File(cache.getMcFolder() + File.separator + "worlds", path);
+                                                File world_file = new File(mc_dir + File.separator + "worlds", path);
 
                                                 if (hard && world_file.exists())
                                                     Files.delete(world_file.toPath());
@@ -511,7 +510,7 @@ public final class ResourceDownloader implements Utils {
                                             } else {
                                                 Debug.util.add(Text.util.create("Skipped download of world " + world.getName() + " file  ( World data already exists )", Color.WHITE, 12), false);
 
-                                                File world_file = new File(cache.getMcFolder() + File.separator + "worlds", path);
+                                                File world_file = new File(mc_dir + File.separator + "worlds", path);
 
                                                 if (hard && world_file.exists())
                                                     Files.delete(world_file.toPath());

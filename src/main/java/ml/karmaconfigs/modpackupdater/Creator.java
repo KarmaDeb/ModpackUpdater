@@ -283,6 +283,8 @@ public final class Creator implements Utils {
                             mod.setName(name_input.getText());
                             mod.setAuthors(authors_input.getText().replaceAll("\\s", "").split(","));
                             mod.setVersion(version_input.getText());
+                            mod.setMcVersion(version_to_use);
+                            mod.setRealMc(version);
 
                             List<String> lines = new ArrayList<>();
                             desc_input.setText(desc_input.getText().replace("<br>", "\n"));

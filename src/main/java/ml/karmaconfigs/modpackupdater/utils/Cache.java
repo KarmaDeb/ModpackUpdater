@@ -1,10 +1,7 @@
 package ml.karmaconfigs.modpackupdater.utils;
 
-import com.therandomlabs.curseapi.game.CurseCategory;
-import com.therandomlabs.curseapi.game.CurseCategorySection;
-import com.therandomlabs.curseapi.game.CurseGame;
-import com.therandomlabs.curseapi.project.CurseSearchQuery;
 import ml.karmaconfigs.modpackupdater.Updater;
+import ml.karmaconfigs.modpackupdater.files.MPUExt;
 import ml.karmaconfigs.modpackupdater.files.memory.ClientMemory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,17 +11,16 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.Optional;
 
 public final class Cache {
 
     private static BufferedImage cache_ico;
     private static File mc_folder = new ClientMemory().getMc();
+    private static File modpack_mc = new ClientMemory().getMc();
     private static File mpu_file = null;
     private static String last_debug;
-    private static CurseGame minecraft;
-    private static CurseCategorySection minecraft_mods;
-    private static CurseCategory minecraft_mods_section;
+    private static boolean launch_status = false;
+    private static boolean downloading_java = false;
 
     /**
      * Initialize the cache storage
@@ -67,6 +63,10 @@ public final class Cache {
         mc_folder = file;
     }
 
+    public final void saveModpackMc(@NotNull final MPUExt _modpack) {
+        modpack_mc = Utils.getPackMc(_modpack);
+    }
+
     /**
      * Save the latest mpu file
      *
@@ -88,24 +88,21 @@ public final class Cache {
     }
 
     /**
-     * Save the minecraft CurseForge
+     * Save the current status of the modpack launcher
      *
-     * @param game the game
+     * @param status the launch status
      */
-    public final void saveMinecraft(final CurseGame game) throws Throwable {
-        minecraft = game;
+    public final void saveLaunchStatus(final boolean status) {
+        launch_status = status;
+    }
 
-        for (CurseCategory category : minecraft.categories()) {
-            Optional<CurseCategorySection> categories_section = category.section();
-            if (categories_section.isPresent()) {
-                CurseCategorySection section = categories_section.get();
-                if (section.name().toLowerCase().contains("mods")) {
-                    minecraft_mods = section;
-                    minecraft_mods_section = category;
-                    break;
-                }
-            }
-        }
+    /**
+     * Set if the modpack is downloading/unzipping java
+     *
+     * @param status the java download/unzip status
+     */
+    public final void setDownloadingJava(final boolean status) {
+        downloading_java = true;
     }
 
     /**
@@ -141,6 +138,16 @@ public final class Cache {
     }
 
     /**
+     * Get the the current modpack mc directory
+     *
+     * @return the current modpack mc directory
+     */
+    @NotNull
+    public final File getModpackMc() {
+        return modpack_mc;
+    }
+
+    /**
      * Get the latest mpu file
      *
      * @return the stored mpu file
@@ -151,30 +158,20 @@ public final class Cache {
     }
 
     /**
-     * Get the minecraft CurseForge
+     * Check if the tool is launching minecraft
      *
-     * @return a minecraft CurseForge instance
+     * @return if the tool is launching minecraft
      */
-    @Nullable
-    public final CurseGame getMinecraft() {
-        return minecraft;
+    public final boolean isLaunching() {
+        return launch_status;
     }
 
     /**
-     * Get a search query with the minecraft
-     * mods
+     * Check if the tool is downloading/unzipping java
      *
-     * @return a minecraft mods search query
+     * @return if the tool is downloading/unzipping java
      */
-    @Nullable
-    public final CurseSearchQuery searchQuery() {
-        try {
-            return new CurseSearchQuery()
-                    .game(minecraft)
-                    .category(minecraft_mods_section)
-                    .categorySection(minecraft_mods);
-        } catch (Throwable ex) {
-            return null;
-        }
+    public final boolean isDownloadingJava() {
+        return downloading_java;
     }
 }

@@ -12,15 +12,6 @@ public final class ClientMemory implements Utils {
     private final static CustomFile cfg = new CustomFile(new File(getUpdaterDir, "client.config"), true);
 
     /**
-     * Save the current modpack into the client memory
-     *
-     * @param modpack the modpack
-     */
-    public final void saveModpack(final MPUExt modpack) {
-        cfg.saveInstance("Modpack", modpack);
-    }
-
-    /**
      * Save the last modpack download url
      *
      * @param url the url address
@@ -59,22 +50,22 @@ public final class ClientMemory implements Utils {
     }
 
     /**
+     * Save the auto scroll status of the log
+     * output
+     *
+     * @param auto auto scroll?
+     */
+    public final void saveLogScroll(final boolean auto) {
+        cfg.set("UI_LogScroll", auto);
+    }
+
+    /**
      * Save the update check status of the tool
      *
      * @param check check updates?
      */
     public final void saveUpdateCheck(final boolean check) {
         cfg.set("UI_CheckUpdates", check);
-    }
-
-    /**
-     * Load the last modpack from client memory
-     *
-     * @return the latest modpack
-     */
-    @Nullable
-    public final MPUExt loadModpack() {
-        return (MPUExt) cfg.getInstance("Modpack", null);
     }
 
     /**
@@ -111,11 +102,19 @@ public final class ClientMemory implements Utils {
 
         return new File(path);
     }
+
     /**
      * Get the tool auto scroll status
      */
     public final boolean autoScroll() {
         return cfg.getBoolean("UI_AutoScroll", true);
+    }
+
+    /**
+     * Get the logs auto scroll status
+     */
+    public final boolean logScroll() {
+        return cfg.getBoolean("UI_LogScroll", true);
     }
 
     /**

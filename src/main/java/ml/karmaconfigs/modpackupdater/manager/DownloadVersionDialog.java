@@ -49,6 +49,11 @@ public final class DownloadVersionDialog {
         JButton accept = new JButton("Download");
         JButton cancel = new JButton("Cancel");
 
+        accept.setToolTipText("Download/Update the mod " + project.name() + "\n" +
+                "( Will download dependencies if available )");
+        cancel.setToolTipText("Cancel the mod download and\n" +
+                "go back to browser");
+
         JSplitPane acp_can = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, accept, cancel);
         JSplitPane ver_butt = new JSplitPane(JSplitPane.VERTICAL_SPLIT, versions_box, acp_can);
 
@@ -71,6 +76,9 @@ public final class DownloadVersionDialog {
                             if (!mod_dir.exists())
                                 Files.createDirectories(mod_dir.toPath());
 
+                            if (alreadyDownloaded(file, mod_dir)) {
+                                deleteSimilar(file, mod_dir);
+                            }
                             file.downloadToDirectory(mod_dir.toPath());
                             downloadDependencies(project, file, selected_version, mod_dir);
                             dialog.dispatchEvent(new WindowEvent(dialog, WindowEvent.WINDOW_CLOSING));
@@ -107,16 +115,6 @@ public final class DownloadVersionDialog {
         dialog.setVisible(true);
     }
 
-    private boolean contains(final CurseFile file, final String ver) {
-        for (String v : file.gameVersionStrings()) {
-            if (v.equals(ver)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private void downloadDependencies(CurseProject main_project, CurseFile file, final String selected_version, final File mod_dir) throws Throwable {
         for (CurseDependency dependency : file.dependencies()) {
             if (dependency.type().equals(CurseDependencyType.REQUIRED)) {
@@ -140,5 +138,81 @@ public final class DownloadVersionDialog {
                 }
             }
         }
+    }
+
+    private void deleteSimilar(final CurseFile download_file, final File dest_folder) throws Throwable {
+        for (File file : dest_folder.isDirectory() ? dest_folder.listFiles() : dest_folder.getParentFile().listFiles()) {
+            String name = file.getName();
+            String recommended = download_file.displayName();
+
+            if (similarity(name, recommended) >= 0.5) {
+                Debug.util.add(Text.util.create("Removed old mod file: " + dest_folder.getName() + "/" + file.getName(), Color.LIGHTGREEN, 12), true);
+                Files.delete(file.toPath());
+                break;
+            }
+        }
+    }
+
+    private boolean contains(final CurseFile file, final String ver) {
+        for (String v : file.gameVersionStrings()) {
+            if (v.equals(ver)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean alreadyDownloaded(final CurseFile download_file, File dest_folder) {
+        for (File file : dest_folder.isDirectory() ? dest_folder.listFiles() : dest_folder.getParentFile().listFiles()) {
+            String name = file.getName();
+            String recommended = download_file.displayName();
+
+            if (similarity(name, recommended) >= 0.5) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public double similarity(String s1, String s2) {
+        String longer = s1, shorter = s2;
+        if (s1.length() < s2.length()) {
+            longer = s2;
+            shorter = s1;
+        }
+        int longerLength = longer.length();
+        if (longerLength == 0)
+            return 1.0;
+
+        return (longerLength - editDistance(longer, shorter)) / (double) longerLength;
+    }
+
+    private int editDistance(String s1, String s2) {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+
+        int[] costs = new int[s2.length() + 1];
+        for (int i = 0; i <= s1.length(); i++) {
+            int lastValue = i;
+            for (int j = 0; j <= s2.length(); j++) {
+                if (i == 0)
+                    costs[j] = j;
+                else {
+                    if (j > 0) {
+                        int newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                            newValue = Math.min(Math.min(newValue, lastValue),
+                                    costs[j]) + 1;
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
+                }
+            }
+            if (i > 0)
+                costs[s2.length()] = lastValue;
+        }
+        return costs[s2.length()];
     }
 }

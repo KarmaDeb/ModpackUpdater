@@ -1,16 +1,23 @@
 package ml.karmaconfigs.modpackupdater.utils;
 
+import ml.karmaconfigs.modpackupdater.files.MPUExt;
 import ml.karmaconfigs.modpackupdater.files.memory.ClientMemory;
 import ml.karmaconfigs.modpackupdater.files.memory.CreatorMemory;
+import ml.karmaconfigs.modpackupdater.files.memory.LauncherMemory;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.io.*;
+import java.net.URL;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public interface Utils {
 
@@ -30,6 +37,101 @@ public interface Utils {
 
         Point center = new Point(screen.width / 2 - component.getSize().width / 2, screen.height / 2 - component.getSize().height / 2);
         component.setLocation(center);
+    }
+
+    static void downloadJava() {
+        new AsyncScheduler(() -> {
+            String java_ulr = "https://raw.githubusercontent.com/KarmaConfigs/project_c/main/src/libs/ModpackUpdater/java.zip";
+            File dest_file = new File(getUpdaterDir, "java.zip");
+            if (!javaDir.exists() || javaDir.length() != 4096) {
+                Cache cache = new Cache();
+                cache.setDownloadingJava(true);
+                try {
+                    URL url = new URL(java_ulr);
+
+                    if (!dest_file.exists() || url.openConnection().getContentLengthLong() != dest_file.length()) {
+                        Debug.util.add(Text.util.create("Downloading java for minecraft launching purposes, please wait...", Color.LIGHTGREEN, 12), true);
+
+                        BufferedInputStream in = new BufferedInputStream(url.openStream());
+                        OutputStream out = new FileOutputStream(dest_file);
+
+                        byte[] dataBuffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
+                            out.write(dataBuffer, 0, bytesRead);
+                        }
+
+                        in.close();
+                        out.close();
+                    }
+                } catch (Throwable ex) {
+                    Text text = new Text(ex);
+                    text.format(Color.INDIANRED, 14);
+
+                    Debug.util.add(text, true);
+                } finally {
+                    if (javaDir.length() != 4096) {
+                        Debug.util.add(Text.util.create("Java for minecraft downloaded, unzipping contents...", Color.LIGHTGREEN, 12), true);
+                        try {
+                            byte[] buffer = new byte[1024];
+                            ZipInputStream zis = new ZipInputStream(new FileInputStream(dest_file));
+                            ZipEntry zipEntry = zis.getNextEntry();
+                            while (zipEntry != null) {
+                                File newFile = new File(getUpdaterDir, zipEntry.getName());
+                                if (zipEntry.isDirectory() && !newFile.exists()) {
+                                    Files.createDirectories(newFile.toPath());
+                                } else {
+                                    File parent = newFile.getParentFile();
+                                    if (parent.isDirectory() && !parent.exists()) {
+                                        Files.createDirectories(parent.toPath());
+                                    }
+
+                                    FileOutputStream fos = new FileOutputStream(newFile);
+                                    int len;
+                                    while ((len = zis.read(buffer)) > 0) {
+                                        fos.write(buffer, 0, len);
+                                    }
+                                    fos.close();
+                                }
+                                zipEntry = zis.getNextEntry();
+                            }
+
+                            zis.closeEntry();
+                            zis.close();
+                        } catch (Throwable ex) {
+                            Text text = new Text(ex);
+                            text.format(Color.INDIANRED, 14);
+
+                            Debug.util.add(text, true);
+                        } finally {
+                            try {
+                                Files.delete(dest_file.toPath());
+                            } catch (Throwable ex) {
+                                dest_file.deleteOnExit();
+                            }
+                            Debug.util.add(Text.util.create("Java for minecraft downloaded successfully", Color.LIGHTGREEN, 12), true);
+                            cache.setDownloadingJava(false);
+                        }
+                    } else {
+                        if (dest_file.exists()) {
+                            try {
+                                Files.delete(dest_file.toPath());
+                            } catch (Throwable ex) {
+                                dest_file.deleteOnExit();
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (dest_file.exists()) {
+                    try {
+                        Files.delete(dest_file.toPath());
+                    } catch (Throwable ex) {
+                        dest_file.deleteOnExit();
+                    }
+                }
+            }
+        }).run();
     }
 
     static String findArgument(final String[] arguments, final String path, final Object def) {
@@ -113,14 +215,14 @@ public interface Utils {
     static double[] RGBtoHSB(double r, double g, double b) {
         double hue, saturation, brightness;
         double[] hsbvals = new double[3];
-        double cmax = (r > g) ? r : g;
+        double cmax = Math.max(r, g);
         if (b > cmax) cmax = b;
-        double cmin = (r < g) ? r : g;
+        double cmin = Math.min(r, g);
         if (b < cmin) cmin = b;
 
         brightness = cmax;
         if (cmax != 0)
-            saturation = (double) (cmax - cmin) / cmax;
+            saturation = (cmax - cmin) / cmax;
         else
             saturation = 0;
 
@@ -163,18 +265,65 @@ public interface Utils {
         return new File(getPacksDir, name);
     }
 
+    static File getPackMc(final MPUExt modpack) {
+        File instances = new File(getUpdaterDir, "instances");
+        File mc = new File(instances, "." + modpack.getName());
+        try {
+            if (!instances.exists())
+                Files.createDirectories(instances.toPath());
+
+            if (!mc.exists())
+                Files.createDirectories(mc.toPath());
+        } catch (Throwable ignored) {}
+
+        return mc;
+    }
+
     static String findPath(final File file) {
         return file.getAbsolutePath().replaceAll("\\\\", "/");
     }
 
+    static ArrayList<MPUExt> getModpacks() {
+        ArrayList<MPUExt> modpacks = new ArrayList<>();
+
+        File[] internal_modpacks = getPacksDir.listFiles();
+        for (File mpu_folder : internal_modpacks) {
+            if (mpu_folder.isDirectory()) {
+                File[] contents = mpu_folder.listFiles();
+                for (File content : contents) {
+                    if (content.getName().endsWith(".mpu")) {
+                        try {
+                            MPUExt modpack = new MPUExt(content);
+                            if (!modpacks.contains(modpack)) {
+                                modpacks.add(modpack);
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+                }
+            } else {
+                if (mpu_folder.getName().endsWith(".mpu")) {
+                    try {
+                        MPUExt modpack = new MPUExt(mpu_folder);
+                        if (!modpacks.contains(modpack)) {
+                            modpacks.add(modpack);
+                        }
+                    } catch (Throwable ignored) {}
+                }
+            }
+        }
+
+        return modpacks;
+    }
+
     File getUpdaterDir = new File(getDataFolder(), "MPU");
-    File htmlCacheDir = new File(getUpdaterDir, "html_cache");
     File logsDir = new File(getUpdaterDir, "logs");
     File getPacksDir = new File(getUpdaterDir, "modpacks");
     File defaultMC = new File(getDataFolder(), ".minecraft");
+    File javaDir = new File(getUpdaterDir, "java");
 
     BufferedImage app_ico = new Cache().getIco();
 
     ClientMemory c_memory = new ClientMemory();
     CreatorMemory cr_memory = new CreatorMemory();
+    LauncherMemory l_memory = new LauncherMemory();
 }

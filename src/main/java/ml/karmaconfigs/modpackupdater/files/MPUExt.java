@@ -40,6 +40,19 @@ public final class MPUExt implements Serializable {
     }
 
     /**
+     * Set the modpack mc version
+     *
+     * @param _version the minecraft version
+     */
+    public final void setMcVersion(final String _version) {
+        cf.set(this.getClass().getName() + "_MC", _version);
+    }
+
+    public final void setRealMc(final String _version) {
+        cf.set(this.getClass().getName() + "_RMC", _version);
+    }
+
+    /**
      * Set the new modpack description
      *
      * @param _desc the new description
@@ -89,6 +102,19 @@ public final class MPUExt implements Serializable {
      */
     public final String getVersion() {
         return cf.getString(this.getClass().getName() + "_V", "1.0.0");
+    }
+
+    /**
+     * Get the modpack minecraft version
+     *
+     * @return the modpack minecraft version
+     */
+    public final String getMcVersion() {
+        return cf.getString(this.getClass().getName() + "_MC", "1.16.4");
+    }
+
+    public final String getRealVersion() {
+        return cf.getString(this.getClass().getName() + "_RMC", "1.16.4");
     }
 
     /**
