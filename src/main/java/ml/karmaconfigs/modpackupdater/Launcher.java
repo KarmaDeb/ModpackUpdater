@@ -134,14 +134,18 @@ public final class Launcher {
                                 Cache cache = new Cache();
                                 cache.saveModpackMc(modpack);
                                 new AsyncScheduler(() -> {
+                                    String version = modpack.getMcVersion();
+                                    if (!isCompatible(modpack))
+                                        version = modpack.getRealVersion();
+
                                     API_Interface API = new API_Interface();
                                     API.setMemory(Utils.l_memory.getMaxMemory());
                                     API.setMinMemory(Utils.l_memory.getMinMemory());
                                     API.downloadVersionManifest();
-                                    API.downloadMinecraft(modpack.getMcVersion(), false);
+                                    API.downloadMinecraft(version, false);
                                     API.downloadProfile(Utils.l_memory.getName());
                                     API.setJavaPath(Utils.javaDir.getAbsolutePath().replaceAll("\\\\", "/") + "/bin/javaw.exe");
-                                    API.runMinecraft(Utils.l_memory.getName(), modpack.getMcVersion(), true, false);
+                                    API.runMinecraft(Utils.l_memory.getName(), version, true, false);
                                 }).run();
                                 cancel();
                             }
@@ -285,9 +289,25 @@ public final class Launcher {
                             max.setToolTipText("The maximum amount of ram that minecraft can use");
                         }
 
-                        Utils.l_memory.saveName(name.getText());
-                        Utils.l_memory.saveMinMemory(Integer.parseInt(min.getText()));
-                        Utils.l_memory.saveMaxMemory(Integer.parseInt(max.getText()));
+                        Utils.l_memory.saveName(name_text);
+
+                        String min_value = min.getText();
+                        String max_value = max.getText();
+
+                        if (min_value.replaceAll("\\s", "").isEmpty()) {
+                            min_value = String.valueOf(Utils.l_memory.getMinMemory());
+                            if (min_value.replaceAll("\\s", "").isEmpty())
+                                min_value = "1024";
+                        }
+
+                        if (max_value.replaceAll("\\s", "").isEmpty()) {
+                            max_value = String.valueOf(Utils.l_memory.getMaxMemory());
+                            if (max_value.replaceAll("\\s", "").isEmpty())
+                                max_value = "2048";
+                        }
+
+                        Utils.l_memory.saveMinMemory(Integer.parseInt(min_value));
+                        Utils.l_memory.saveMaxMemory(Integer.parseInt(max_value));
 
                         launch.setEnabled(allValid);
                         launch_vanilla.setEnabled(allValid);
@@ -353,6 +373,33 @@ public final class Launcher {
             return name_modpack.getOrDefault(selected, null);
         } catch (Throwable ex) {
             return null;
+        }
+    }
+
+    /**
+     * Read the version integer of the modpack
+     *
+     * @param modpack the modpack
+     * @return the modpack version integer
+     */
+    private boolean isCompatible(final MPUExt modpack) {
+        try {
+            String value = modpack.getRealVersion();
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < value.length(); i++) {
+                char letter = value.charAt(i);
+                if (Character.isDigit(letter))
+                    builder.append(letter);
+            }
+
+            int id = Integer.parseInt(builder.toString());
+            if (builder.length() <= 3) {
+                return id <= 113;
+            } else {
+                return id <= 1132;
+            }
+        } catch (Throwable ex) {
+            return false;
         }
     }
 }

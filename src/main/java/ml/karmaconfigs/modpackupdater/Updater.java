@@ -73,7 +73,7 @@ public final class Updater implements Utils {
     private static boolean shown = false;
     private static boolean available = false;
     private static boolean advised = false;
-    private static int checks = 0;
+    private static int checks = -1;
 
     /**
      * Initialize the frame to show it
@@ -379,14 +379,23 @@ public final class Updater implements Utils {
         });
 
         curse.addActionListener(e -> {
-            if (!advised)
-                Debug.util.add(Text.util.create("If this is the first time you use CurseForge mod downloader, it will take some minutes to open the window ( to download web browser ), please wait...", Color.LIGHTCORAL, 21), true);
+            Cache cache = new Cache();
+            if (!cache.isDownloadingBrowser()) {
+                if (!advised)
+                    Debug.util.add(Text.util.create("If this is the first time you use CurseForge mod downloader, it will take some minutes to open the window ( to download web browser ), please wait...", Color.LIGHTCORAL, 21), true);
 
-            new AsyncScheduler(() -> {
-                CurseDownloader downloader = new CurseDownloader();
-                downloader.initialize();
-                advised = true;
-            }).run();
+                new AsyncScheduler(() -> {
+                    if (nativesDir.exists() && nativesDir.length() >= 4096) {
+                        CurseDownloader downloader = new CurseDownloader();
+                        downloader.initialize();
+                    } else {
+                        Utils.downloadBrowserNatives();
+                    }
+                    advised = true;
+                }).run();
+            } else {
+                Debug.util.add(Text.util.create("Please wait until the tool download browser natives...", Color.LIGHTCORAL, 21), true);
+            }
         });
 
         launch.addActionListener(e -> {
@@ -400,7 +409,6 @@ public final class Updater implements Utils {
         });
 
         url_input.addKeyListener(new KeyAdapter() {
-
             @Override
             public void keyTyped(KeyEvent e) {
                 boolean isPasting = ctr && e.getKeyCode() == KeyEvent.VK_V;
@@ -506,35 +514,43 @@ public final class Updater implements Utils {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (check_updates.isSelected()) {
-                    if (checks >= 3 && available)
-                        shown = false;
-                    try {
-                        changelog.requestChangelog();
+                if (checks != -1) {
+                    if (check_updates.isSelected()) {
+                        if (checks >= 3 && available)
+                            shown = false;
+                        try {
+                            changelog.requestChangelog();
 
-                        String current = app_ver != null ? app_ver : "0";
-                        String latest = changelog.getVersion();
+                            String current = app_ver != null ? app_ver : "0";
+                            String latest = changelog.getVersion();
 
-                        int c_int = Integer.parseInt(current.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
-                        int l_int = Integer.parseInt(latest.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
+                            int c_int = Integer.parseInt(current.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
+                            int l_int = Integer.parseInt(latest.replaceAll("\\s", "").replaceAll("[aA-zZ]", "").replace(".", ""));
 
-                        if (c_int != l_int) {
-                            if (c_int < l_int) {
-                                available = true;
-                                if (!shown) {
-                                    showChangelogDialog();
-                                    shown = true;
+                            if (c_int != l_int) {
+                                if (c_int < l_int) {
+                                    available = true;
+                                    if (!shown) {
+                                        showChangelogDialog();
+                                        shown = true;
+                                    }
                                 }
                             }
-                        }
-                    } catch (Throwable ex) {
-                        Text text = new Text(ex);
-                        text.format(Color.INDIANRED, 14);
+                        } catch (Throwable ex) {
+                            Text text = new Text(ex);
+                            text.format(Color.INDIANRED, 14);
 
-                        Debug.util.add(text, true);
+                            Debug.util.add(text, true);
+                        }
+                        if (available)
+                            checks++;
                     }
-                    if (available)
-                        checks++;
+                } else {
+                    try {
+                        changelog.requestChangelog();
+                        showChangelogDialog();
+                        checks = 0;
+                    } catch (Throwable ignored) {}
                 }
             }
         }, 0, TimeUnit.MINUTES.toMillis(1));
@@ -562,6 +578,7 @@ public final class Updater implements Utils {
 
             initialize();
 
+            tool_bar.refreshUI();
             KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(ke -> {
                 synchronized (Updater.class) {
                     switch (ke.getID()) {
@@ -596,6 +613,8 @@ public final class Updater implements Utils {
             reader.downloadData();
             downloadModpack(modpack, false, true);
         }
+
+        JFrame frame = main_frame;
     }
 
     /**
@@ -814,9 +833,11 @@ public final class Updater implements Utils {
                         Debug.util.add(modpack.getDescription(), true);
                         downloading = false;
 
-                        if (!isCheck) {
-                            Launcher launcher = new Launcher(modpack);
-                            launcher.initialize();
+                        if (isCompatible(modpack)) {
+                            if (!isCheck) {
+                                Launcher launcher = new Launcher(modpack);
+                                launcher.initialize();
+                            }
                         }
                     }
                 }
@@ -831,14 +852,20 @@ public final class Updater implements Utils {
             Debug.util.add(modpack.getDescription(), true);
             downloading = false;
 
-            if (!isCheck) {
-                Launcher launcher = new Launcher(modpack);
-                launcher.initialize();
+            if (isCompatible(modpack)) {
+                if (!isCheck) {
+                    Launcher launcher = new Launcher(modpack);
+                    launcher.initialize();
+                }
             }
         }
 
         Cache cache = new Cache();
-        File copy = new File(Utils.getPackMc(modpack), modpack.getName() + ".mpu");
+        File mc = Utils.getPackMc(modpack);
+        if (!isCompatible(modpack))
+            mc = cache.getMcFolder();
+
+        File copy = new File(mc, modpack.getName() + ".mpu");
         File original = new File(Utils.getPackDir(modpack.getName()), modpack.getName() + ".mpu");
 
         if (copy.exists())
@@ -857,7 +884,14 @@ public final class Updater implements Utils {
             icon = new ImageIcon(cache.getIco());
 
         int i;
-        File copy = new File(Utils.getPackMc(modpack), modpack.getName() + ".mpu");
+
+        File mc = Utils.getPackMc(modpack);
+        if (!isCompatible(modpack))
+            mc = cache.getMcFolder();
+
+        File copy = new File(mc, modpack.getName() + ".mpu");
+
+        boolean compatible = isCompatible(modpack);
 
         if (copy.exists() && !force) {
             MPUExt copy_mpu = new MPUExt(copy);
@@ -865,17 +899,26 @@ public final class Updater implements Utils {
             int orig_last = Integer.parseInt(modpack.getVersion().replaceAll("[aA-zZ]", "").replace(".", ""));
 
             if (copy_last < orig_last) {
+                Text text = new Text("The tool launcher is not already compatible<br>with these forge versions, and the modpack<br>will be updated at your .minecraft folder<br><br>( USING THE TOOL TO LAUNCH IT WILL<br>LAUNCH A VANILLA INSTANCE )");
+                text.format(Color.INDIANRED, 12);
+
                 i = JOptionPane.showOptionDialog(main_frame,
-                        "You are about to update\nmodpack " + modpack.getName(),
+                        "You are about to update\nmodpack " + modpack.getName() + (compatible ? "\n" : "\n\nAs the modpack forge version is over 1.13.2:\n<html>" + text.getText(true) + "</html>"),
                         "Modpack " + modpack.getName() + " update tool", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, icon, null, null);
             } else {
+                Text text = new Text("The tool launcher is not already compatible<br>with these forge versions, and the modpack<br>files will be checked from your .minecraft folder<br><br>( USING THE TOOL TO LAUNCH IT WILL<br>LAUNCH A VANILLA INSTANCE )");
+                text.format(Color.INDIANRED, 12);
+
                 i = JOptionPane.showOptionDialog(main_frame,
-                        "You are about to check\nmodpack " + modpack.getName() + " files",
+                        "You are about to check\nmodpack " + modpack.getName() + " files" + (compatible ? "\n" : "\n\nAs the modpack forge version is over 1.13.2:\n<html>" + text.getText(true) + "</html>"),
                         "Modpack " + modpack.getName() + " files check tool", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, icon, null, null);
             }
         } else {
+            Text text = new Text("The tool launcher is not already compatible<br>with these forge versions, and the modpack<br>will be installed at your .minecraft folder<br><br>( USING THE TOOL TO LAUNCH IT WILL<br>LAUNCH A VANILLA INSTANCE )");
+            text.format(Color.INDIANRED, 12);
+
             i = JOptionPane.showOptionDialog(main_frame,
-                    "You are about to install\nmodpack " + modpack.getName(),
+                    "You are about to install\nmodpack " + modpack.getName() + (compatible ? "\n" : "\n\nAs the modpack forge version is over 1.13.2:\n<html>" + text.getText(true) + "</html>"),
                     "Modpack " + modpack.getName() + " installation tool", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, icon, null, null);
         }
 
@@ -890,6 +933,33 @@ public final class Updater implements Utils {
 
                 Debug.util.add(text, true);
             }
+        }
+    }
+
+    /**
+     * Read the version integer of the modpack
+     *
+     * @param modpack the modpack
+     * @return the modpack version integer
+     */
+    private static boolean isCompatible(final MPUExt modpack) {
+        try {
+            String value = modpack.getRealVersion();
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < value.length(); i++) {
+                char letter = value.charAt(i);
+                if (Character.isDigit(letter))
+                    builder.append(letter);
+            }
+
+            int id = Integer.parseInt(builder.toString());
+            if (builder.length() <= 3) {
+                return id <= 113;
+            } else {
+                return id <= 1132;
+            }
+        } catch (Throwable ex) {
+            return false;
         }
     }
 

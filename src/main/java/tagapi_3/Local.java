@@ -32,12 +32,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -80,6 +75,8 @@ class Local {
     List version_manifest_versions_id = new ArrayList();
     List version_manifest_versions_type = new ArrayList();
     List version_manifest_versions_url = new ArrayList();
+
+    HashMap<String, String> path_url = new HashMap<>();
 
     public List getAPIMetaList(String OS) {
         List meta = new ArrayList();
@@ -831,7 +828,8 @@ class Local {
                     JSONObject downloads = (JSONObject) name_.get("downloads");
                     JSONObject artifact = (JSONObject) downloads.get("artifact");
                     if (!name_.get("name").toString().startsWith("net.minecraftforge:forge:")) {
-                        HALF_URL_version_url_list.add(artifact.get("url").toString().replace("/" + artifact.get("path").toString(), ""));
+                        HALF_URL_version_url_list.add(artifact.get("url").toString());
+                        path_url.put(artifact.get("path").toString(), artifact.get("url").toString());
                     } else {
                         HALF_URL_version_url_list.add("https://files.minecraftforge.net/maven");
                     }
@@ -842,6 +840,10 @@ class Local {
         } catch (IOException | ParseException e) {
             //System.out.print(e);
         }
+    }
+
+    public String getURLFromPath(final String path) {
+        return path_url.getOrDefault(path, null);
     }
 
     public String readJson_inheritsFrom(String path) {

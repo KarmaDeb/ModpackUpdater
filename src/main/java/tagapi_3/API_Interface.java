@@ -27,16 +27,12 @@ package tagapi_3;
 import com.minecraft.moonlake.nbt.NBTTagCompound;
 import com.minecraft.moonlake.nbt.NBTTagList;
 import com.minecraft.moonlake.nbt.NBTUtil;
-import ml.karmaconfigs.modpackupdater.files.MPUExt;
 import ml.karmaconfigs.modpackupdater.utils.*;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
-import org.apache.commons.exec.ExecuteStreamHandler;
-import org.apache.commons.exec.PumpStreamHandler;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 /**
@@ -629,15 +625,23 @@ public class API_Interface {
                     LogWindow window = new LogWindow();
                     window.initialize(executor);
                     executor.setStreamHandler(window);
-                    int exit_code = executor.execute(CommandLine.parse(cmd));
-                    Debug.util.add(Text.util.create("Minecraft finished with exit code: " + exit_code, exit_code == 0 ? Color.LIGHTGREEN : Color.INDIANRED, 12), true);
-                    cache.saveLaunchStatus(false);
-                    window.initialize(null);
+                    try {
+                        int exit_code = executor.execute(CommandLine.parse(cmd));
+                        Debug.util.add(Text.util.create("Minecraft finished with exit code: " + exit_code, exit_code == 0 ? Color.LIGHTGREEN : Color.INDIANRED, 12), true);
+                        cache.saveLaunchStatus(false);
+                        window.initialize(null);
+                    } catch (Throwable ex) {
+                        Debug.util.add(Text.util.create("Minecraft finished with exit code: NOT_LAUNCHED", Color.INDIANRED, 12), true);
+                        cache.saveLaunchStatus(false);
+                        window.initialize(null);
+                    }
                 } catch (Throwable ex) {
                     Text text = new Text(ex);
                     text.format(Color.INDIANRED, 14);
 
                     Debug.util.add(text, true);
+                    Cache cache = new Cache();
+                    cache.saveLaunchStatus(false);
                 }
             }).run();
         } catch (Exception ex) {
@@ -645,6 +649,8 @@ public class API_Interface {
             text.format(Color.INDIANRED, 14);
 
             Debug.util.add(text, true);
+            Cache cache = new Cache();
+            cache.saveLaunchStatus(false);
         }
     }
 
@@ -772,12 +778,16 @@ public class API_Interface {
             }
             for (int i = 0; i < local.version_name_list.size(); i++) {
                 String path = local.version_path_list.get(i).toString();
-                if (!path.startsWith("net/minecraftforge/forge/")) {
-                    local.version_url_list.add(local.HALF_URL_version_url_list.get(i) + "/" + path);
+                if (local.getURLFromPath(path) == null) {
+                    if (!path.startsWith("net/minecraftforge/forge/")) {
+                        local.version_url_list.add(local.HALF_URL_version_url_list.get(i) + "/" + path);
+                    } else {
+                        //get forge library
+                        String jar_value = path.split("/")[path.split("/").length - 1];
+                        local.version_url_list.add(local.HALF_URL_version_url_list.get(i) + "/" + path.replace(jar_value, jar_value.replace(".jar", "-universal.jar")));
+                    }
                 } else {
-                    //get forge library
-                    String jar_value = path.split("/")[path.split("/").length - 1];
-                    local.version_url_list.add(local.HALF_URL_version_url_list.get(i) + "/" + path.replace(jar_value, jar_value.replace(".jar", "-universal.jar")));
+                    local.version_url_list.add(local.getURLFromPath(path));
                 }
             }
             for (int i = 0; i < local.version_name_list.size(); i++) {

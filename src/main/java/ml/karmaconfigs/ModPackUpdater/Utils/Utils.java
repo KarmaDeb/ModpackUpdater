@@ -1,5 +1,6 @@
 package ml.karmaconfigs.modpackupdater.utils;
 
+import ml.karmaconfigs.modpackupdater.Updater;
 import ml.karmaconfigs.modpackupdater.files.MPUExt;
 import ml.karmaconfigs.modpackupdater.files.memory.ClientMemory;
 import ml.karmaconfigs.modpackupdater.files.memory.CreatorMemory;
@@ -12,10 +13,9 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Locale;
+import java.util.*;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -55,10 +55,38 @@ public interface Utils {
                         BufferedInputStream in = new BufferedInputStream(url.openStream());
                         OutputStream out = new FileOutputStream(dest_file);
 
+                        int size = url.openConnection().getContentLength();
+
                         byte[] dataBuffer = new byte[1024];
                         int bytesRead;
+                        double sumCount = 0.0;
+                        long start = System.nanoTime();
+                        Timer timer = new Timer();
+                        timer.schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                if (dest_file.length() < size) {
+                                    long current = System.nanoTime();
+                                    String remaining = getTimeRemaining(size, dest_file.length(), current - start);
+                                    tool_bar.setLabel("<html>Downloading:<br>java for minecraft ( " + remaining + " )</html>");
+                                } else {
+                                    cancel();
+                                }
+                            }
+                        }, 0, TimeUnit.SECONDS.toMillis(1));
                         while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
                             out.write(dataBuffer, 0, bytesRead);
+
+                            sumCount += bytesRead;
+                            if (size > 0) {
+                                double percentage_db = (sumCount / size * 100.0);
+                                String to_str = String.valueOf(percentage_db);
+
+                                int percentage = Integer.parseInt(to_str.split("\\.")[0]);
+
+                                tool_bar.show(percentage);
+                                tool_bar.setLocation(Updater.external.frame);
+                            }
                         }
 
                         in.close();
@@ -76,7 +104,9 @@ public interface Utils {
                             byte[] buffer = new byte[1024];
                             ZipInputStream zis = new ZipInputStream(new FileInputStream(dest_file));
                             ZipEntry zipEntry = zis.getNextEntry();
+                            int passed = 0;
                             while (zipEntry != null) {
+                                passed++;
                                 File newFile = new File(getUpdaterDir, zipEntry.getName());
                                 if (zipEntry.isDirectory() && !newFile.exists()) {
                                     Files.createDirectories(newFile.toPath());
@@ -94,6 +124,16 @@ public interface Utils {
                                     fos.close();
                                 }
                                 zipEntry = zis.getNextEntry();
+
+                                double division = (double) passed / 210;
+                                long iPart = (long) division;
+                                double fPart = division - iPart;
+
+                                double percentage = fPart * 100.0;
+                                tool_bar.show(Integer.parseInt(String.valueOf(percentage).split("\\.")[0]));
+                                tool_bar.setLocation(Updater.external.frame);
+                                if (zipEntry != null)
+                                    tool_bar.setLabel("<html>Unzipping:<br>" + zipEntry.getName() + "</html>");
                             }
 
                             zis.closeEntry();
@@ -132,6 +172,163 @@ public interface Utils {
                 }
             }
         }).run();
+    }
+
+    static void downloadBrowserNatives() {
+        new AsyncScheduler(() -> {
+            String java_ulr = "https://raw.githubusercontent.com/KarmaConfigs/project_c/main/src/libs/ModpackUpdater/natives.zip";
+            File dest_file = new File(getUpdaterDir, "natives.zip");
+            if (!nativesDir.exists() || nativesDir.length() != 4096) {
+                Cache cache = new Cache();
+                cache.setDownloadingBrowser(true);
+                try {
+                    URL url = new URL(java_ulr);
+
+                    if (!dest_file.exists() || url.openConnection().getContentLengthLong() != dest_file.length()) {
+                        Debug.util.add(Text.util.create("Downloading browser natives, please wait...", Color.LIGHTGREEN, 12), true);
+
+                        BufferedInputStream in = new BufferedInputStream(url.openStream());
+                        OutputStream out = new FileOutputStream(dest_file);
+
+                        int size = url.openConnection().getContentLength();
+
+                        byte[] dataBuffer = new byte[1024];
+                        int bytesRead;
+                        double sumCount = 0.0;
+                        long start = System.nanoTime();
+                        Timer timer = new Timer();
+                        timer.schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                if (dest_file.length() < size) {
+                                    long current = System.nanoTime();
+                                    String remaining = getTimeRemaining(size, dest_file.length(), current - start);
+                                    tool_bar.setLabel("<html>Downloading:<br>browser natives ( " + remaining + " )</html>");
+                                } else {
+                                    cancel();
+                                }
+                            }
+                        }, 0, TimeUnit.SECONDS.toMillis(1));
+                        while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
+                            out.write(dataBuffer, 0, bytesRead);
+
+                            sumCount += bytesRead;
+                            if (size > 0) {
+                                double percentage_db = (sumCount / size * 100.0);
+                                String to_str = String.valueOf(percentage_db);
+
+                                int percentage = Integer.parseInt(to_str.split("\\.")[0]);
+
+                                tool_bar.show(percentage);
+                                tool_bar.setLocation(Updater.external.frame);
+                            }
+                        }
+
+                        in.close();
+                        out.close();
+                    }
+                } catch (Throwable ex) {
+                    Text text = new Text(ex);
+                    text.format(Color.INDIANRED, 14);
+
+                    Debug.util.add(text, true);
+                } finally {
+                    if (nativesDir.length() != 4096) {
+                        Debug.util.add(Text.util.create("Browser natives downloaded successfully, unzipping contents...", Color.LIGHTGREEN, 12), true);
+                        try {
+                            byte[] buffer = new byte[1024];
+                            ZipInputStream zis = new ZipInputStream(new FileInputStream(dest_file));
+                            ZipEntry zipEntry = zis.getNextEntry();
+                            int passed = 0;
+                            while (zipEntry != null) {
+                                passed++;
+                                File newFile = new File(getUpdaterDir, zipEntry.getName());
+                                if (zipEntry.isDirectory() && !newFile.exists()) {
+                                    Files.createDirectories(newFile.toPath());
+                                } else {
+                                    File parent = newFile.getParentFile();
+                                    if (parent.isDirectory() && !parent.exists()) {
+                                        Files.createDirectories(parent.toPath());
+                                    }
+
+                                    FileOutputStream fos = new FileOutputStream(newFile);
+                                    int len;
+                                    while ((len = zis.read(buffer)) > 0) {
+                                        fos.write(buffer, 0, len);
+                                    }
+                                    fos.close();
+                                }
+                                zipEntry = zis.getNextEntry();
+
+                                double division = (double) passed / 75;
+                                long iPart = (long) division;
+                                double fPart = division - iPart;
+
+                                double percentage = fPart * 100.0;
+                                tool_bar.show(Integer.parseInt(String.valueOf(percentage).split("\\.")[0]));
+                                tool_bar.setLocation(Updater.external.frame);
+                                if (zipEntry != null)
+                                    tool_bar.setLabel("<html>Unzipping:<br>" + zipEntry.getName() + "</html>");
+                            }
+
+                            zis.closeEntry();
+                            zis.close();
+                        } catch (Throwable ex) {
+                            Text text = new Text(ex);
+                            text.format(Color.INDIANRED, 14);
+
+                            Debug.util.add(text, true);
+                        } finally {
+                            try {
+                                Files.delete(dest_file.toPath());
+                            } catch (Throwable ex) {
+                                dest_file.deleteOnExit();
+                            }
+                            Debug.util.add(Text.util.create("Browser natives downloaded successfully", Color.LIGHTGREEN, 12), true);
+                            cache.setDownloadingBrowser(false);
+                        }
+                    } else {
+                        if (dest_file.exists()) {
+                            try {
+                                Files.delete(dest_file.toPath());
+                            } catch (Throwable ex) {
+                                dest_file.deleteOnExit();
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (dest_file.exists()) {
+                    try {
+                        Files.delete(dest_file.toPath());
+                    } catch (Throwable ex) {
+                        dest_file.deleteOnExit();
+                    }
+                }
+            }
+        }).run();
+    }
+
+    static String getTimeRemaining(final long file_size, final long current_size, final long elapsed) {
+        long estimated_time;
+        try {
+            estimated_time = (file_size - current_size) * elapsed/current_size;
+        } catch (Throwable ex) {
+            estimated_time = elapsed;
+        }
+        long seconds = TimeUnit.NANOSECONDS.toSeconds(estimated_time);
+        long minutes = TimeUnit.NANOSECONDS.toMinutes(estimated_time);
+        long hours = TimeUnit.NANOSECONDS.toHours(estimated_time);
+
+        if (seconds <= 59) {
+            return seconds + " sec(s) left";
+        } else {
+            if (minutes <= 59) {
+                return minutes + " min(s) and " + (minutes - seconds) + " sec(s) left";
+            } else {
+                return hours + " h(s), " + (hours - minutes) + " min(s) " + (minutes - seconds) + " sec(s) left";
+            }
+        }
     }
 
     static String findArgument(final String[] arguments, final String path, final Object def) {
@@ -320,10 +517,13 @@ public interface Utils {
     File getPacksDir = new File(getUpdaterDir, "modpacks");
     File defaultMC = new File(getDataFolder(), ".minecraft");
     File javaDir = new File(getUpdaterDir, "java");
+    File nativesDir = new File(getUpdaterDir, "natives");
 
     BufferedImage app_ico = new Cache().getIco();
 
     ClientMemory c_memory = new ClientMemory();
     CreatorMemory cr_memory = new CreatorMemory();
     LauncherMemory l_memory = new LauncherMemory();
+
+    ProgressBar tool_bar = new ProgressBar();
 }

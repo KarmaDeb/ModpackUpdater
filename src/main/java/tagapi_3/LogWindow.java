@@ -23,6 +23,7 @@ public final class LogWindow implements ExecuteStreamHandler {
     public final DefaultExecutor initialize(final DefaultExecutor executor) {
         Cache cache = new Cache();
         output_frame.setIconImage(cache.getIco());
+        output.setEditable(false);
 
         auto_scroll.setSelected(Utils.c_memory.logScroll());
 

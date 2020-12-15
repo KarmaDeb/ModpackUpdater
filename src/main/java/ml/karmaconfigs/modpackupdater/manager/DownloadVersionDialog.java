@@ -79,6 +79,7 @@ public final class DownloadVersionDialog {
                             if (alreadyDownloaded(file, mod_dir)) {
                                 deleteSimilar(file, mod_dir);
                             }
+
                             file.downloadToDirectory(mod_dir.toPath());
                             downloadDependencies(project, file, selected_version, mod_dir);
                             dialog.dispatchEvent(new WindowEvent(dialog, WindowEvent.WINDOW_CLOSING));

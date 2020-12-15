@@ -21,6 +21,7 @@ public final class Cache {
     private static String last_debug;
     private static boolean launch_status = false;
     private static boolean downloading_java = false;
+    private static boolean downloading_browser = false;
 
     /**
      * Initialize the cache storage
@@ -64,7 +65,11 @@ public final class Cache {
     }
 
     public final void saveModpackMc(@NotNull final MPUExt _modpack) {
-        modpack_mc = Utils.getPackMc(_modpack);
+        if (isCompatible(_modpack)) {
+            modpack_mc = Utils.getPackMc(_modpack);
+        } else {
+            modpack_mc = getMcFolder();
+        }
     }
 
     /**
@@ -102,7 +107,17 @@ public final class Cache {
      * @param status the java download/unzip status
      */
     public final void setDownloadingJava(final boolean status) {
-        downloading_java = true;
+        downloading_java = status;
+    }
+
+    /**
+     * Set if the modpack is downloading/unzipping the
+     * nav browser
+     *
+     * @param status the nav browser download status
+     */
+    public final void setDownloadingBrowser(final boolean status) {
+        downloading_browser = status;
     }
 
     /**
@@ -173,5 +188,41 @@ public final class Cache {
      */
     public final boolean isDownloadingJava() {
         return downloading_java;
+    }
+
+    /**
+     * Check if the tool is downloading/unzipping browser
+     *
+     * @return if the tool is downloading/unzipping the browser
+     */
+    public final boolean isDownloadingBrowser() {
+        return downloading_browser;
+    }
+
+    /**
+     * Read the version integer of the modpack
+     *
+     * @param modpack the modpack
+     * @return the modpack version integer
+     */
+    private static boolean isCompatible(final MPUExt modpack) {
+        try {
+            String value = modpack.getRealVersion();
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < value.length(); i++) {
+                char letter = value.charAt(i);
+                if (Character.isDigit(letter))
+                    builder.append(letter);
+            }
+
+            int id = Integer.parseInt(builder.toString());
+            if (builder.length() <= 3) {
+                return id <= 113;
+            } else {
+                return id <= 1132;
+            }
+        } catch (Throwable ex) {
+            return false;
+        }
     }
 }

@@ -20,10 +20,12 @@ import java.awt.event.*;
 import java.io.File;
 import java.io.FileReader;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 public final class Creator implements Utils {
 
@@ -664,17 +666,35 @@ public final class Creator implements Utils {
         if (folder.exists() && folder.delete()) {
             Debug.util.add(Text.util.create("Deleted old upload folder " + Utils.findPath(folder), Color.LIGHTGREEN, 12), true);
         } else {
-            for (File file : folder.listFiles()) {
-                if (file.isDirectory()) {
-                    cleanUploads(file);
-                } else {
-                    if (file.isFile() && !file.isDirectory() && file.delete()) {
-                        Debug.util.add(Text.util.create("Deleted old file " + Utils.findPath(file), Color.LIGHTGREEN, 12), true);
+            File[] files = folder.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        cleanUploads(file);
+                    } else {
+                        if (file.isFile() && !file.isDirectory() && file.delete()) {
+                            Debug.util.add(Text.util.create("Deleted old file " + Utils.findPath(file), Color.LIGHTGREEN, 12), true);
+                        }
                     }
                 }
             }
             try {
-                Files.delete(folder.toPath());
+                if (folder.exists()) {
+                    Stream<Path> paths_set = Files.list(folder.toPath());
+                    Iterator<Path> paths = paths_set.iterator();
+                    while (paths.hasNext()) {
+                        Path path = paths.next();
+                        if (path.toFile().isDirectory()) {
+                            if (path.toFile().listFiles().length <= 0) {
+                                cleanUploads(path.toFile());
+                            } else {
+                                Files.delete(path);
+                            }
+                        } else {
+                            Files.delete(path);
+                        }
+                    }
+                }
             } catch (Throwable ex) {
                 Text text = new Text(ex);
                 text.format(Color.INDIANRED, 14);

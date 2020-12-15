@@ -31,9 +31,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 
-import ml.karmaconfigs.modpackupdater.files.MPUExt;
 import ml.karmaconfigs.modpackupdater.utils.Cache;
-import ml.karmaconfigs.modpackupdater.utils.Utils;
 import org.apache.commons.io.FileUtils;
 import java.security.SecureRandom;
 import java.math.BigInteger;

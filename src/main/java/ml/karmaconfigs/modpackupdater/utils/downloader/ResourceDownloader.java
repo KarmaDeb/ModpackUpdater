@@ -43,6 +43,11 @@ public final class ResourceDownloader implements Utils {
             terminated = false;
             try {
                 File mc_dir = Utils.getPackMc(modpack);
+
+                Cache cache = new Cache();
+                if (!isCompatible(modpack))
+                    mc_dir = cache.getMcFolder();
+
                 boolean sent = false;
 
                 for (Resource resource : resources) {
@@ -599,6 +604,33 @@ public final class ResourceDownloader implements Utils {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Read the version integer of the modpack
+     *
+     * @param modpack the modpack
+     * @return the modpack version integer
+     */
+    private static boolean isCompatible(final MPUExt modpack) {
+        try {
+            String value = modpack.getRealVersion();
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < value.length(); i++) {
+                char letter = value.charAt(i);
+                if (Character.isDigit(letter))
+                    builder.append(letter);
+            }
+
+            int id = Integer.parseInt(builder.toString());
+            if (builder.length() <= 3) {
+                return id <= 113;
+            } else {
+                return id <= 1132;
+            }
+        } catch (Throwable ex) {
+            return false;
         }
     }
 }
