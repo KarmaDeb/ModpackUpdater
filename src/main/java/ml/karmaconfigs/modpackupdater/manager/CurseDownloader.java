@@ -13,6 +13,7 @@ import org.cef.handler.CefLoadHandlerAdapter;
 import org.cef.network.CefRequest;
 import org.jetbrains.annotations.Nullable;
 import org.panda_lang.pandomium.Pandomium;
+import org.panda_lang.pandomium.loader.PandomiumProgressListener;
 import org.panda_lang.pandomium.settings.PandomiumSettings;
 import org.panda_lang.pandomium.wrapper.PandomiumBrowser;
 import org.panda_lang.pandomium.wrapper.PandomiumClient;
@@ -31,12 +32,6 @@ public final class CurseDownloader {
 
     private final static JFrame main_frame = new JFrame("CurseForge downloader");
 
-    private final static Pandomium pandomium = new Pandomium(PandomiumSettings.getDefaultSettings());
-
-    static {
-        pandomium.initialize();
-    }
-
     private final static JButton back = new JButton("Back");
     private final static JButton forward = new JButton("Forward");
     private final static JButton open_in_browser = new JButton("Browser");
@@ -44,8 +39,7 @@ public final class CurseDownloader {
     private final static JButton manage = new JButton("Manage mods");
     private final static JTextArea url_input = new JTextArea("https://www.curseforge.com/minecraft/mc-mods");
 
-    private final static PandomiumClient client = pandomium.createClient();
-    private final static PandomiumBrowser browser = client.loadURL("https://www.curseforge.com/minecraft/mc-mods");
+    private static PandomiumBrowser browser = null;
 
     private final static Dimension dimension = new Dimension(1200, 800);
 
@@ -53,6 +47,11 @@ public final class CurseDownloader {
 
     public final void initialize() {
         if (!initialized) {
+            Pandomium pandomium = new Pandomium(PandomiumSettings.getDefaultSettings());
+            pandomium.initialize();
+            PandomiumClient client = pandomium.createClient();
+            browser = client.loadURL("https://www.curseforge.com/minecraft/mc-mods");
+
             Cache cache = new Cache();
             main_frame.setIconImage(cache.getIco());
 
@@ -81,10 +80,11 @@ public final class CurseDownloader {
             but3_url.setDividerLocation(907);
 
             main_frame.add(final_browser);
-            main_frame.pack();
-            main_frame.setVisible(true);
 
             main_frame.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+
+            main_frame.pack();
+            main_frame.setVisible(true);
 
             Utils.toCenter(main_frame);
 
@@ -158,7 +158,7 @@ public final class CurseDownloader {
             back.addActionListener(e -> {
                 if (browser.getCefBrowser().canGoBack()) {
                     browser.getCefBrowser().goBack();
-                } else{
+                } else {
                     main_frame.setVisible(false);
                 }
             });
@@ -199,8 +199,6 @@ public final class CurseDownloader {
                     Debug.util.add(text, true);
                 }
             });
-
-
 
             initialized = true;
         } else {

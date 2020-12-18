@@ -146,7 +146,7 @@ public final class DownloadVersionDialog {
             String name = file.getName();
             String recommended = download_file.displayName();
 
-            if (similarity(name, recommended) >= 0.5) {
+            if (similarity(name, recommended) >= 0.6) {
                 Debug.util.add(Text.util.create("Removed old mod file: " + dest_folder.getName() + "/" + file.getName(), Color.LIGHTGREEN, 12), true);
                 Files.delete(file.toPath());
                 break;
@@ -169,7 +169,7 @@ public final class DownloadVersionDialog {
             String name = file.getName();
             String recommended = download_file.displayName();
 
-            if (similarity(name, recommended) >= 0.5) {
+            if (similarity(name, recommended) >= 0.6) {
                 return true;
             }
         }

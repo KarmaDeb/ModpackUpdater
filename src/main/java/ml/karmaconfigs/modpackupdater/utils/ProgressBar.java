@@ -3,8 +3,6 @@ package ml.karmaconfigs.modpackupdater.utils;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.net.URL;
 
 public final class ProgressBar {
@@ -13,7 +11,7 @@ public final class ProgressBar {
 
     private final static JDialog bar_frame = new JDialog();
 
-    private final static Dimension size = new Dimension(200, 40);
+    private final static Dimension size = new Dimension(260, 40);
 
     private final static JLabel bar_info = new JLabel();
     private final static JProgressBar bar = new JProgressBar();

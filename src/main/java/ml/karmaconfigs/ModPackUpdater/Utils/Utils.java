@@ -324,9 +324,9 @@ public interface Utils {
             return seconds + " sec(s) left";
         } else {
             if (minutes <= 59) {
-                return minutes + " min(s) and " + (minutes - seconds) + " sec(s) left";
+                return minutes + " min(s) and " + Math.abs((minutes * 60) - seconds) + " sec(s) left";
             } else {
-                return hours + " h(s), " + (hours - minutes) + " min(s) " + (minutes - seconds) + " sec(s) left";
+                return hours + " h(s) and " + Math.abs((hours * 60) - minutes) + " min(s)";
             }
         }
     }

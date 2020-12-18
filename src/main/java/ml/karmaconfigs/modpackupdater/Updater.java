@@ -384,15 +384,29 @@ public final class Updater implements Utils {
                 if (!advised)
                     Debug.util.add(Text.util.create("If this is the first time you use CurseForge mod downloader, it will take some minutes to open the window ( to download web browser ), please wait...", Color.LIGHTCORAL, 21), true);
 
-                new AsyncScheduler(() -> {
-                    if (nativesDir.exists() && nativesDir.length() >= 4096) {
+                if (nativesDir.exists() || nativesDir.length() >= 4096) {
+                    new AsyncScheduler(() -> {
                         CurseDownloader downloader = new CurseDownloader();
                         downloader.initialize();
-                    } else {
-                        Utils.downloadBrowserNatives();
-                    }
-                    advised = true;
-                }).run();
+                    }).run();
+                } else {
+                    Utils.downloadBrowserNatives();
+
+                    Timer timer = new Timer();
+                    timer.schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (!cache.isDownloadingBrowser()) {
+                                cancel();
+                                new AsyncScheduler(() -> {
+                                    CurseDownloader downloader = new CurseDownloader();
+                                    downloader.initialize();
+                                }).run();
+                            }
+                        }
+                    }, 0, 1);
+                }
+                advised = true;
             } else {
                 Debug.util.add(Text.util.create("Please wait until the tool download browser natives...", Color.LIGHTCORAL, 21), true);
             }
