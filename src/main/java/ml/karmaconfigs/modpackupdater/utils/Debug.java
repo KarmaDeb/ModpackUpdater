@@ -1,7 +1,6 @@
 package ml.karmaconfigs.modpackupdater.utils;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.io.File;
@@ -15,23 +14,11 @@ public final class Debug implements Utils {
     private final static JEditorPane debug_label = new JEditorPane();
     private final static JScrollPane debug_scroll = new JScrollPane(debug_label);
 
-    private final static HashMap<String, String> debug_timestamp = new HashMap<>();
-    private final static HashMap<String, String> debug_unformatted = new HashMap<>();
+    private final static ArrayList<String> output = new ArrayList<>();
 
     static {
         debug_label.setContentType("text/html");
         debug_label.setEditable(false);
-    }
-
-    /**
-     * Get the timestamp of the specified text line
-     *
-     * @param line the line
-     * @return a timestamp
-     */
-    @Nullable
-    public final String getTimeStamp(final String line) {
-        return debug_timestamp.getOrDefault(line, null);
     }
 
     /**
@@ -83,9 +70,7 @@ public final class Debug implements Utils {
                     String str = old + spacer + text.getText(true);
                     debug_label.setText("<html>" + str + "</html>");
 
-                    debug_timestamp.put(text.getText(true), timestamp);
-                    debug_unformatted.put(text.getText(true), text.getText(false));
-
+                    output.add(timestamp + text.getText(false) + (space ? "<br><br>" : ""));
                     if (c_memory.autoScroll()) {
                         SwingUtilities.invokeLater(() -> debug_scroll.getVerticalScrollBar().setValue(debug_scroll.getVerticalScrollBar().getMaximum()));
                     }
@@ -117,8 +102,7 @@ public final class Debug implements Utils {
                 String str = old + spacer + text;
                 debug_label.setText("<html>" + str + "</html>");
 
-                debug_timestamp.put(text, timestamp);
-                debug_unformatted.put(text, text);
+                output.add(timestamp + text.replaceAll("<[^>]*>", "") + (space ? "<br><br>" : ""));
 
                 if (c_memory.autoScroll()) {
                     SwingUtilities.invokeLater(() -> debug_scroll.getVerticalScrollBar().setValue(debug_scroll.getVerticalScrollBar().getMaximum()));
@@ -180,15 +164,9 @@ public final class Debug implements Utils {
             writer.write("Architecture: " + realArch + "<br>\n");
             writer.write("Model: " + model + "<br><br>\n\n");
 
-            for (String debug_line : debug_label.getText().split("<br>")) {
+            for (String debug_line : output) {
                 if (!debug_line.replaceAll("\\s", "").isEmpty()) {
-                    Debug debug = new Debug();
-                    String timestamp = debug.getTimeStamp(debug_line);
-
-                    String unformatted = debug_unformatted.getOrDefault(debug_line, null);
-
-                    if (timestamp != null && !timestamp.isEmpty() && unformatted != null && !unformatted.isEmpty())
-                        writer.write(timestamp + unformatted + "<br>\n");
+                    writer.write(debug_line.replace("<br>", "<br>\n") + "<br>\n");
                 } else {
                     writer.write("<br>\n");
                 }

@@ -5,10 +5,10 @@ plugins {
 apply plugin: 'java'
 
 def projName = 'ModpackUpdater'
-def projBuild = '6'
+def projBuild = '10'
 
 group 'ml.karmaconfigs'
-version '1.3.4'
+version '1.3.5'
 
 repositories {
     mavenCentral()
